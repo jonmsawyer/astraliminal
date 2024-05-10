@@ -1,36 +1,24 @@
-use bevy::input::mouse::*;
-use bevy::{ecs::query::Has, app::AppExit, prelude::*};
-use bevy::window::PrimaryWindow;
+//! A basic implementation of a character controller for a dynamic rigid body.
+//!
+//! This showcases the following:
+//!
+//! - Basic directional movement and jumping
+//! - Support for both keyboard and gamepad input
+//! - A configurable maximum slope angle for jumping
+//! - Loading a platformer environment from a glTF
+//!
+//! The character controller logic is contained within the `plugin` module.
+//!
+//! For a kinematic character controller, see the `kinematic_character_3d` example.
+
+use bevy::{app::AppExit, ecs::query::Has, input::mouse::*, prelude::*};
 use bevy_xpbd_3d::{math::*, prelude::*};
 
-#[derive(Debug, Clone, Component)]
-pub struct PlayerHitbox {
-    pub length: f32,
-    pub radius: f32,
-    pub eye: f32,
-    pub position: Vec3,
-    pub looking_at: Vec3,
-}
+use super::DebugData;
 
-impl Default for PlayerHitbox {
-    fn default() -> PlayerHitbox {
-        let eye: f32 = 1.6256;
-        PlayerHitbox {
-            length: 1.778,
-            radius: 0.762,
-            eye,
-            position: Vec3::new(-2.0, eye, 5.0),
-            looking_at: Vec3::new(0.0, eye, 0.0),
-        }
-    }
-}
+pub struct CharacterPlugin;
 
-#[derive(Debug, Copy, Clone, Component)]
-pub struct GameCursor {}
-
-pub struct CharacterControllerPlugin;
-
-impl Plugin for CharacterControllerPlugin {
+impl Plugin for CharacterPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<MovementAction>()
             .add_systems(
@@ -41,17 +29,41 @@ impl Plugin for CharacterControllerPlugin {
                     update_grounded,
                     movement,
                     apply_movement_damping,
-                ).chain(),
+                )
+                    .chain(),
             )
             // .add_systems(Startup, spawn_camera)
-            .add_systems(Update, (
-                move_camera,
-                // pan_orbit_camera,
-            ));
-        app.add_systems(Startup, setup_cursor);
-            // .add_systems(Update, move_cursor);
-        #[cfg(target_os = "windows")]
-        app.add_systems(Update, cursor_recenter);
+            .add_systems(
+                Update,
+                (
+                    move_camera,
+                    // pan_orbit_camera,
+                    reset_player,
+                ),
+            );
+        // .add_systems(Update, move_cursor);
+    }
+}
+
+#[derive(Debug, Clone, Component)]
+pub struct PlayerHitbox {
+    pub length: f32,
+    pub radius: f32,
+    pub _eye: f32,
+    pub position: Vec3,
+    pub looking_at: Vec3,
+}
+
+impl Default for PlayerHitbox {
+    fn default() -> PlayerHitbox {
+        let _eye: f32 = 1.6256;
+        PlayerHitbox {
+            length: 1.778,
+            radius: 0.762,
+            _eye,
+            position: Vec3::new(-2.0, _eye, 5.0),
+            looking_at: Vec3::new(0.0, _eye, 0.0),
+        }
     }
 }
 
@@ -59,18 +71,33 @@ impl Plugin for CharacterControllerPlugin {
 #[derive(Debug, Event)]
 pub enum MovementAction {
     Move(Vector2),
-    // Camera(Vector2),
     Jump,
 }
 
-/// A marker component indicating that an entity is using a character controller.
+/// Tags an entity as capable of panning and orbiting.
 #[derive(Debug, Component)]
-pub struct CharacterController;
+pub struct PanOrbitCamera {
+    /// The "focus point" to orbit around. It is automatically updated when panning the camera
+    pub focus: Vec3,
+    pub radius: f32,
+    pub upside_down: bool,
+}
+
+impl Default for PanOrbitCamera {
+    fn default() -> Self {
+        PanOrbitCamera {
+            focus: Vec3::ZERO,
+            radius: 5.0,
+            upside_down: false,
+        }
+    }
+}
 
 /// A marker component indicating that an entity is on the ground.
 #[derive(Debug, Component)]
 #[component(storage = "SparseSet")]
 pub struct Grounded;
+
 /// The acceleration used for character movement.
 #[derive(Debug, Component)]
 pub struct MovementAcceleration(Scalar);
@@ -89,6 +116,10 @@ pub struct JumpImpulse(Scalar);
 #[derive(Debug, Component)]
 pub struct MaxSlopeAngle(Scalar);
 
+/// A marker component indicating that an entity is using a character controller.
+#[derive(Debug, Component)]
+pub struct CharacterController;
+
 /// A bundle that contains the components needed for a basic
 /// kinematic character controller.
 #[derive(Bundle)]
@@ -99,37 +130,6 @@ pub struct CharacterControllerBundle {
     ground_caster: ShapeCaster,
     locked_axes: LockedAxes,
     movement: MovementBundle,
-}
-
-/// A bundle that contains components for character movement.
-#[derive(Debug, Bundle)]
-pub struct MovementBundle {
-    acceleration: MovementAcceleration,
-    damping: MovementDampingFactor,
-    jump_impulse: JumpImpulse,
-    max_slope_angle: MaxSlopeAngle,
-}
-
-impl MovementBundle {
-    pub const fn new(
-        acceleration: Scalar,
-        damping: Scalar,
-        jump_impulse: Scalar,
-        max_slope_angle: Scalar,
-    ) -> Self {
-        Self {
-            acceleration: MovementAcceleration(acceleration),
-            damping: MovementDampingFactor(damping),
-            jump_impulse: JumpImpulse(jump_impulse),
-            max_slope_angle: MaxSlopeAngle(max_slope_angle),
-        }
-    }
-}
-
-impl Default for MovementBundle {
-    fn default() -> Self {
-        Self::new(30.0, 0.9, 7.0, PI * 0.45)
-    }
 }
 
 impl CharacterControllerBundle {
@@ -166,25 +166,56 @@ impl CharacterControllerBundle {
     }
 }
 
+/// A bundle that contains components for character movement.
+#[derive(Debug, Bundle)]
+pub struct MovementBundle {
+    acceleration: MovementAcceleration,
+    damping: MovementDampingFactor,
+    jump_impulse: JumpImpulse,
+    max_slope_angle: MaxSlopeAngle,
+}
+
+impl MovementBundle {
+    pub const fn new(
+        acceleration: Scalar,
+        damping: Scalar,
+        jump_impulse: Scalar,
+        max_slope_angle: Scalar,
+    ) -> Self {
+        Self {
+            acceleration: MovementAcceleration(acceleration),
+            damping: MovementDampingFactor(damping),
+            jump_impulse: JumpImpulse(jump_impulse),
+            max_slope_angle: MaxSlopeAngle(max_slope_angle),
+        }
+    }
+}
+
+impl Default for MovementBundle {
+    fn default() -> Self {
+        Self::new(30.0, 0.9, 7.0, PI * 0.45)
+    }
+}
+
 /// Sends [`MovementAction`] events based on keyboard input.
 fn keyboard_input(
     mut movement_event_writer: EventWriter<MovementAction>,
     mut app_exit_events: ResMut<Events<AppExit>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
-    let up = keyboard_input.any_pressed([KeyCode::KeyW, KeyCode::ArrowUp]);
-    let down = keyboard_input.any_pressed([KeyCode::KeyS, KeyCode::ArrowDown]);
-    let left = keyboard_input.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]);
-    let right = keyboard_input.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]);
+    let forward = keyboard_input.any_pressed([KeyCode::KeyW, KeyCode::ArrowUp]);
+    let back = keyboard_input.any_pressed([KeyCode::KeyS, KeyCode::ArrowDown]);
+    let strafe_left = keyboard_input.any_pressed([KeyCode::KeyA, KeyCode::ArrowLeft]);
+    let strafe_right = keyboard_input.any_pressed([KeyCode::KeyD, KeyCode::ArrowRight]);
     let quit = keyboard_input.any_pressed([KeyCode::Escape]);
 
-    let horizontal = right as i8 - left as i8;
-    let vertical = up as i8 - down as i8;
-    let direction = Vector2::new(horizontal as Scalar, vertical as Scalar).clamp_length_max(1.0);
+    let planar_x = strafe_right as i8 - strafe_left as i8;
+    let planar_z = back as i8 - forward as i8;
+    let direction = Vector2::new(planar_x as Scalar, -planar_z as Scalar).clamp_length_max(1.0);
 
-    if direction != Vector2::ZERO {
-        movement_event_writer.send(MovementAction::Move(direction));
-    }
+    // if direction != Vector2::ZERO {
+    movement_event_writer.send(MovementAction::Move(direction));
+    // }
 
     if keyboard_input.just_pressed(KeyCode::Space) {
         movement_event_writer.send(MovementAction::Jump);
@@ -234,6 +265,7 @@ fn gamepad_input(
 /// Updates the [`Grounded`] status for character controllers.
 fn update_grounded(
     mut commands: Commands,
+    mut debug_data: ResMut<DebugData>,
     mut query: Query<
         (Entity, &ShapeHits, &Rotation, Option<&MaxSlopeAngle>),
         With<CharacterController>,
@@ -251,8 +283,10 @@ fn update_grounded(
         });
 
         if is_grounded {
+            debug_data.is_grounded = true;
             commands.entity(entity).insert(Grounded);
         } else {
+            debug_data.is_grounded = false;
             commands.entity(entity).remove::<Grounded>();
         }
     }
@@ -261,16 +295,19 @@ fn update_grounded(
 /// Responds to [`MovementAction`] events and moves character controllers accordingly.
 fn movement(
     time: Res<Time>,
+    mut debug_data: ResMut<DebugData>,
     mut movement_event_reader: EventReader<MovementAction>,
     mut controllers: Query<(
         &MovementAcceleration,
         &JumpImpulse,
         &mut LinearVelocity,
         &mut PlayerHitbox,
+        &mut PanOrbitCamera,
+        &mut Transform,
+        &mut Projection,
         Has<Grounded>,
     )>,
     mut _windows: Query<&mut Window>,
-    mut _camera: Query<(&mut PanOrbitCamera, &mut Transform, &Projection)>,
 ) {
     // Precision is adjusted so that the example works with
     // both the `f32` and `f64` features. Otherwise you don't need this.
@@ -282,51 +319,62 @@ fn movement(
             jump_impulse,
             mut linear_velocity,
             mut _hitbox,
+            mut pan_orbit_camera,
+            transform,
+            mut _projection,
             is_grounded,
         ) in &mut controllers
         {
+            let rotation = transform.rotation.xyz();
+            let forward = transform.forward();
+            let back = transform.back();
+            let left = transform.left();
+            let right = transform.right();
+            debug_data.character_position = transform.translation;
+            debug_data.character_looking_at = rotation;
+
             match event {
                 MovementAction::Move(direction) => {
-                    linear_velocity.x += direction.x * movement_acceleration.0 * delta_time;
-                    linear_velocity.z -= direction.y * movement_acceleration.0 * delta_time;
+                    let direction = *direction;
+                    if direction.x > 0.0 {
+                        // transform.translation =
+                        //     transform.translation +
+                        //     transform.right() * direction.x * movement_acceleration.0 * delta_time;
+                        linear_velocity.x += right.x * movement_acceleration.0 * delta_time;
+                        linear_velocity.z += right.z * movement_acceleration.0 * delta_time;
+                    }
+                    if direction.x < 0.0 {
+                        // transform.translation =
+                        //     transform.translation +
+                        //     transform.left() * direction.x * movement_acceleration.0 * delta_time;
+                        linear_velocity.x += left.x * movement_acceleration.0 * delta_time;
+                        linear_velocity.z += left.z * movement_acceleration.0 * delta_time;
+                    }
+                    if direction.y > 0.0 {
+                        // transform.translation =
+                        //     transform.translation +
+                        //     transform.forward() * direction.y * movement_acceleration.0 * delta_time;
+                        linear_velocity.x += forward.x * movement_acceleration.0 * delta_time;
+                        linear_velocity.z += forward.z * movement_acceleration.0 * delta_time;
+                    }
+                    if direction.y < 0.0 {
+                        // transform.translation =
+                        //     transform.translation +
+                        //     transform.forward() * direction.y * movement_acceleration.0 * delta_time;
+                        linear_velocity.x += back.x * movement_acceleration.0 * delta_time;
+                        linear_velocity.z += back.z * movement_acceleration.0 * delta_time;
+                    }
+                    debug_data.direction = Vec2::new(direction.x, direction.y);
+                    // linear_velocity.x += direction.x * movement_acceleration.0 * delta_time;
+                    // linear_velocity.z += direction.y * movement_acceleration.0 * delta_time;
+                    pan_orbit_camera.focus = transform.translation;
                 }
                 MovementAction::Jump => {
+                    debug_data.is_grounded = is_grounded;
                     if is_grounded {
                         linear_velocity.y = jump_impulse.0;
                     }
                 }
-                // MovementAction::Camera(direction) => {
-                //     let acceleration = movement_acceleration.0;
-                //     let x = direction.x * acceleration * delta_time;
-                //     let _y: f32 = 0.0;
-                //     let z = -direction.y * acceleration * delta_time;
-                //     info!("MovementAction::Camera event.");
-                //     info!(" > direction={:?}, x={}, z={}", direction, x, z);
-                //     let mut pan = Vec2::new(x, z);
-                //     for (mut pan_orbit, mut transform, projection) in camera.iter_mut() {
-                //         info!(" > pan_orbit={:?}", pan_orbit);
-                //         info!(" > transform={:?}", transform);
-                //         info!(" > projection={:?}", projection);
-                //         info!(" > movement_acceleration={:?}", movement_acceleration);
-                //         // make panning distance independent of resolution and FOV,
-                //         let window = get_primary_window_size(&mut windows);
-                //         if let Projection::Perspective(projection) = projection {
-                //             pan *= Vec2::new(projection.fov * projection.aspect_ratio, projection.fov) / window * acceleration * acceleration;
-                //         }
-                //         // translate by local axes
-                //         let new_x = transform.rotation * Vec3::X * pan.x;
-                //         let new_z = transform.rotation * Vec3::Z * pan.y;
-                //         // make panning proportional to distance away from focus point
-                //         let translation = (new_x + new_z) * pan_orbit.radius;
-                //         pan_orbit.focus += translation;
-                //         // emulating parent/child to make the yaw/y-axis rotation behave like a turntable
-                //         // parent = x and y rotation
-                //         // child = z-offset
-                //         let rot_matrix = Mat3::from_quat(transform.rotation);
-                //         transform.translation =
-                //             pan_orbit.focus + rot_matrix.mul_vec3(Vec3::new(0.0, 0.0, pan_orbit.radius));
-                //     }
-                // }
             }
         }
     }
@@ -338,25 +386,6 @@ fn apply_movement_damping(mut query: Query<(&MovementDampingFactor, &mut LinearV
         // We could use `LinearDamping`, but we don't want to dampen movement along the Y axis
         linear_velocity.x *= damping_factor.0;
         linear_velocity.z *= damping_factor.0;
-    }
-}
-
-/// Tags an entity as capable of panning and orbiting.
-#[derive(Debug, Component)]
-pub struct PanOrbitCamera {
-    /// The "focus point" to orbit around. It is automatically updated when panning the camera
-    pub focus: Vec3,
-    pub radius: f32,
-    pub upside_down: bool,
-}
-
-impl Default for PanOrbitCamera {
-    fn default() -> Self {
-        PanOrbitCamera {
-            focus: Vec3::ZERO,
-            radius: 5.0,
-            upside_down: false,
-        }
     }
 }
 
@@ -376,9 +405,9 @@ fn move_camera(
     let mut orbit_button_changed = false;
 
     // if input_mouse.pressed(orbit_button) {
-        for ev in ev_motion.read() {
-            rotation_move += ev.delta;
-        }
+    for ev in ev_motion.read() {
+        rotation_move += ev.delta;
+    }
     // }
     if input_mouse.just_released(orbit_button) || input_mouse.just_pressed(orbit_button) {
         orbit_button_changed = true;
@@ -532,10 +561,8 @@ fn _spawn_camera(mut commands: Commands) {
     let hitbox = PlayerHitbox::default();
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_translation(hitbox.position).looking_at(
-                hitbox.looking_at,
-                Vec3::Y,
-            ),
+            transform: Transform::from_translation(hitbox.position)
+                .looking_at(hitbox.looking_at, Vec3::Y),
             ..Default::default()
         },
         PanOrbitCamera {
@@ -546,61 +573,18 @@ fn _spawn_camera(mut commands: Commands) {
     ));
 }
 
-fn setup_cursor(
-    mut windows: Query<&mut Window>,
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
+fn reset_player(
+    mut debug_data: ResMut<DebugData>,
+    mut query: Query<(&mut Transform, &mut PanOrbitCamera)>,
 ) {
-    let window: Mut<Window> = windows.single_mut();
-    // window.cursor.visible = false;
-    let cursor_spawn: Vec3 = Vec3::ZERO;
-    let center_x = window.width() / 2.0;
-    let center_y = window.height() / 2.0;
-    let cursor_width: f32 = 32.0; // in pixels
-    let cursor_height: f32 = 32.0; // in pixels
-
-    commands.spawn((
-        ImageBundle {
-            image: asset_server.load("icons/cursor/precision.png").into(),
-            style: Style {
-                // display: Display::None,
-                position_type: PositionType::Absolute,
-                // position: UiRect::all(Val::Auto),
-                width: Val::Px(cursor_width),
-                height: Val::Px(cursor_height),
-                left: Val::Px(center_x - cursor_width / 2.0), // half the image width
-                top: Val::Px(center_y - cursor_height / 2.0), // half the image height
-                ..default()
-            },
-            z_index: ZIndex::Global(15),
-            transform: Transform::from_translation(cursor_spawn),
-            ..default()
-        },
-        GameCursor {}
-    ));
-}
-
-fn _move_cursor(window: Query<&Window>, mut cursor: Query<&mut Style, With<GameCursor>>) {
-    let window: &Window = window.single();
-    let center_x = window.width() / 2.0;
-    let center_y = window.height() / 2.0;
-    if let Some(_position) = window.cursor_position() {
-        let mut img_style = cursor.single_mut();
-        // img_style.left = Val::Px(position.x - 16.0);
-        // img_style.top = Val::Px(position.y - 16.0);
-        img_style.left = Val::Px(center_x - 16.0);
-        img_style.top = Val::Px(center_y - 16.0);
+    if debug_data.is_changed() {
+        if debug_data.reset_player {
+            for (mut transform, mut pan_orbit_camera) in query.iter_mut() {
+                transform.translation = Vec3::new(2.0, 1.6, 2.0).into();
+                transform.look_to(Vec3::ZERO, Vec3::Y);
+                pan_orbit_camera.focus = transform.translation;
+            }
+            debug_data.reset_player = false;
+        }
     }
-}
-
-#[cfg(target_os = "windows")]
-fn cursor_recenter(
-    mut q_windows: Query<&mut Window, With<PrimaryWindow>>,
-) {
-    let mut primary_window = q_windows.single_mut();
-    let center = Vec2::new(
-        primary_window.width() / 2.0,
-        primary_window.height() / 2.0,
-    );
-    primary_window.set_cursor_position(Some(center));
 }

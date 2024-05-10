@@ -1,25 +1,17 @@
-//! A basic implementation of a character controller for a dynamic rigid body.
-//!
-//! This showcases the following:
-//!
-//! - Basic directional movement and jumping
-//! - Support for both keyboard and gamepad input
-//! - A configurable maximum slope angle for jumping
-//! - Loading a platformer environment from a glTF
-//!
-//! The character controller logic is contained within the `plugin` module.
-//!
-//! For a kinematic character controller, see the `kinematic_character_3d` example.
-
-mod plugin;
+mod character;
+mod cursor;
 mod debugger;
 
-use bevy::prelude::*;
-use bevy::window::{Window, WindowResolution, WindowPlugin, WindowMode, Cursor, CursorGrabMode};
+use bevy::{
+    core::FrameCount,
+    prelude::*,
+    window::{Cursor, CursorGrabMode, Window, WindowMode, WindowPlugin, WindowResolution},
+};
 
 use bevy_xpbd_3d::{math::*, prelude::*};
 
-use plugin::*;
+use character::*;
+use cursor::*;
 use debugger::*;
 
 fn main() {
@@ -28,7 +20,6 @@ fn main() {
         DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 cursor: Cursor {
-                    // icon: CursorIcon::Crosshair,
                     visible: false,
                     grab_mode: CursorGrabMode::Locked,
                     ..Default::default()
@@ -39,16 +30,23 @@ fn main() {
                 mode: WindowMode::BorderlessFullscreen,
                 resizable: false,
                 focused: true,
+                // This will spawn an invisible window
+                // The window will be made visible in the make_visible() system after 5 frames.
+                // This is useful when you want to avoid the white window that shows up before
+                // the GPU is ready to render the app.
+                visible: false,
                 ..Default::default()
             }),
             ..Default::default()
         }),
         PhysicsPlugins::default(),
-        CharacterControllerPlugin,
+        CharacterPlugin,
         DebuggerPlugin,
+        CursorPlugin,
     ))
-        .add_systems(Startup, setup);
-    app.run();
+    .add_systems(Startup, setup)
+    .add_systems(Update, make_visible)
+    .run();
 }
 
 fn setup(
@@ -66,26 +64,20 @@ fn setup(
         //     transform: Transform::from_translation(hitbox.position),
         //     ..default()
         // },
-        CharacterControllerBundle::new(Collider::capsule(hitbox.length, hitbox.radius)).with_movement(
-            30.0,
-            0.92,
-            7.0,
-            (30.0 as Scalar).to_radians(),
-        ),
+        CharacterControllerBundle::new(Collider::capsule(hitbox.length, hitbox.radius))
+            .with_movement(30.0, 0.92, 7.0, (30.0 as Scalar).to_radians()),
         Friction::ZERO.with_combine_rule(CoefficientCombine::Min),
         Restitution::ZERO.with_combine_rule(CoefficientCombine::Min),
         GravityScale(1.0),
         hitbox.clone(),
         Camera3dBundle {
-            transform: Transform::from_translation(hitbox.position).looking_at(
-                hitbox.looking_at,
-                Vec3::Y,
-            ),
+            transform: Transform::from_translation(hitbox.position)
+                .looking_at(hitbox.looking_at, Vec3::Y),
             ..Default::default()
         },
         PanOrbitCamera {
             focus: hitbox.position,
-            radius: 0.1,
+            radius: 0.0,
             ..Default::default()
         },
     ));
@@ -125,7 +117,6 @@ fn setup(
         ..default()
     });
 
-
     // Camera
     // let translation = Vec3::new(-2.0, 2.5, 5.0);
     // let radius = translation.length();
@@ -141,9 +132,15 @@ fn setup(
     // ));
 }
 
-
-
-
+fn make_visible(mut window: Query<&mut Window>, frames: Res<FrameCount>) {
+    // The delay may be different for your app or system.
+    if frames.0 == 5 {
+        // At this point the gpu is ready to show the app so we can make the window visible.
+        // Alternatively, you could toggle the visibility in Startup.
+        // It will work, but it will have one white frame before it starts rendering
+        window.single_mut().visible = true;
+    }
+}
 
 // use bevy::{input::keyboard::{self, KeyboardInput}, prelude::*};
 // use bevy_flycam::prelude::*;

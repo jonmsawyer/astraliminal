@@ -1,14 +1,12 @@
+/// Thanks to [Travis Veazey](https://github.com/Kromey) for the FpsResource bit of code.
 use bevy::prelude::*;
 
 pub struct DebuggerFpsPlugin;
 
 impl Plugin for DebuggerFpsPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .init_resource::<FpsResource<25>>()
-            .add_systems(Update, (
-                update_fps,
-            ));
+        app.init_resource::<FpsResource<25>>()
+            .add_systems(Update, (update_fps,));
     }
 }
 
@@ -39,9 +37,6 @@ impl<const N: usize> FpsResource<N> {
     }
 }
 
-fn update_fps(
-    mut fps: ResMut<FpsResource<25>>,
-    time: Res<Time>,
-) {
+fn update_fps(mut fps: ResMut<FpsResource<25>>, time: Res<Time>) {
     fps.add(time.delta_seconds());
 }

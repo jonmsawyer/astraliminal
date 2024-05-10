@@ -1,88 +1,101 @@
-use bevy::prelude::*;
-use bevy::input::keyboard::*;
+use bevy::{
+    input::{
+        keyboard::*,
+        // mouse::{MouseScrollUnit, MouseWheel},
+        ButtonState,
+    },
+    prelude::*,
+};
 // use bevy::{ecs::query::Has, app::AppExit, prelude::*};
 // use bevy::window::{Window, WindowMode, WindowLevel};
-use bevy::input::ButtonState;
 // use bevy_xpbd_3d::{math::*, prelude::*};
 
 mod fps;
 use fps::{DebuggerFpsPlugin, FpsResource};
 
+mod ui_bundles;
+use ui_bundles::{
+    DebugUiCharacterLookingAtBundle, DebugUiCharacterPositionBundle, DebugUiContainerBundle,
+    DebugUiDirectionBundle, DebugUiFpsBundle, DebugUiIsGroundedBundle, DebugUiNodeBundle,
+    DebugUiTextBundle, DebugUiTitleBundle,
+};
+
+mod ui_components;
+use ui_components::{
+    DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer, DebugUiDirection,
+    DebugUiFps, DebugUiIsGrounded,
+};
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, States)]
+pub enum DebugState {
+    #[default]
+    Disabled,
+    Enabled,
+}
+
 #[derive(Debug, Default, Copy, Clone, Resource)]
 pub struct DebugData {
+    /// A Vec2 containing the player's controller/keyboard direction.
+    pub direction: Vec2,
+    /// A boolean representing if the character/player is grounded or not.
+    pub is_grounded: bool,
     /// A Vec3 containing the player's position.
-    pub player_position: Vec3,
+    pub character_position: Vec3,
     /// A Vec3 containing the vector of looking direction by the player.
-    pub player_looking_at: Vec3,
+    pub character_looking_at: Vec3,
+    /// Reset the player to their starting position.
+    pub reset_player: bool,
     /// True if debugger should be shown, false if debugger should be hidden.
     pub is_visible: bool,
 }
-
-#[derive(Debug, Default, Copy, Clone, Component)]
-pub struct DebugUi;
-
-#[derive(Debug, Default, Copy, Clone, Component)]
-pub struct DebugUiTitle;
-
-#[derive(Debug, Default, Copy, Clone, Component)]
-pub struct DebugUiFps;
 
 pub struct DebuggerPlugin;
 
 impl Plugin for DebuggerPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_plugins((
-                DebuggerFpsPlugin,
-            ))
+        app.add_plugins((DebuggerFpsPlugin,))
+            .insert_state(DebugState::Disabled)
             .init_resource::<DebugData>()
             .add_event::<KeyboardInput>()
-            .add_systems(Update, (
-                keyboard_input,
-                // gamepad_input,
-            ).chain())
-            .add_systems(Startup, (
-                setup_debugger,
-                // spawn_box,
-                //spawn_text,
-            ))
-            .add_systems(Update, (
-                update_debugger,
-            ));
+            .add_systems(OnEnter(DebugState::Enabled), (spawn_debugger,))
+            .add_systems(OnExit(DebugState::Enabled), (despawn_debugger,))
+            .add_systems(
+                Update,
+                ((
+                    keyboard_input,
+                    // gamepad_input,
+                )
+                    .chain(),),
+            )
+            .add_systems(
+                PreUpdate,
+                (update_debugger,).run_if(in_state(DebugState::Enabled)),
+            );
     }
 }
-
-
-// /// A bundle that contains the components needed for a basic
-// /// kinematic character controller.
-// #[derive(Bundle)]
-// pub struct CharacterControllerBundle {
-//     character_controller: CharacterController,
-//     rigid_body: RigidBody,
-//     collider: Collider,
-//     ground_caster: ShapeCaster,
-//     locked_axes: LockedAxes,
-//     movement: MovementBundle,
-// }
 
 fn keyboard_input(
     mut input: EventReader<KeyboardInput>,
-    mut debug_state: ResMut<DebugData>,
-    _time: Res<Time>,
+    mut debug_data: ResMut<DebugData>,
+    mut next_state: ResMut<NextState<DebugState>>,
 ) {
     for key_input in input.read() {
         if key_input.key_code == KeyCode::F3 && key_input.state == ButtonState::Pressed {
-            if debug_state.is_visible {
-                debug_state.is_visible = false;
+            if debug_data.is_visible {
+                debug_data.is_visible = false;
+                next_state.set(DebugState::Disabled);
                 info!("{:?} was pressed. Debugger disabled.", key_input);
             } else {
-                debug_state.is_visible = true;
+                debug_data.is_visible = true;
+                next_state.set(DebugState::Enabled);
                 info!("{:?} was pressed. Debugger enabled.", key_input);
             }
         }
+        if key_input.key_code == KeyCode::F5 && key_input.state == ButtonState::Pressed {
+            debug_data.reset_player = true;
+        }
     }
 }
-
 
 // /// Sends [`MovementAction`] events based on gamepad input.
 // fn gamepad_input(
@@ -118,174 +131,370 @@ fn keyboard_input(
 //     }
 // }
 
-fn setup_debugger(
-    mut commands: Commands,
-) {
-    let container_bundle = (
-        NodeBundle {
-            style: Style {
-                display: Display::None,
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                justify_content: JustifyContent::Start,
-                ..default()
-            },
-            background_color: Color::rgba(0.4, 0.4, 0.4, 0.2).into(),
-            ..default()
-        },
-        DebugUi {},
-    );
-
-    let title_text = "Debugger UI";
-    let title_bundle = (
-        TextBundle::from_section(
-            title_text,
-            TextStyle {
-                font_size: 22.0,
-                color: Color::WHITE,
-                ..default()
-            },
-        ) // Set the alignment of the Text
-        .with_text_justify(JustifyText::Center)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Relative,
-            top: Val::Px(10.0),
-            left: Val::Px(10.0),
-            ..default()
-        }),
-        DebugUi {},
-        DebugUiTitle {},
-    );
-
-    let fps_text = "FPS:";
-    let fps_bundle = (
-        TextBundle::from_section(
-            fps_text,
-            TextStyle {
-                font_size: 16.0,
-                color: Color::GRAY,
-                ..default()
-            }
-        ),
-        DebugUi {},
-        DebugUiFps {},
-    );
-
-    let container_entity = commands.spawn(container_bundle).id();
-    let title_entity = commands.spawn(title_bundle).id();
-    let fps_entity = commands.spawn(fps_bundle).id();
-
-    commands.entity(container_entity).push_children(&[title_entity, fps_entity]);
+fn spawn_debugger(mut commands: Commands) {
+    // Root node
+    commands
+        .spawn(DebugUiNodeBundle::new(None, None))
+        .with_children(|parent| {
+            // Top panel (horizonal fill)
+            parent
+                .spawn(DebugUiContainerBundle::new(None, None))
+                .with_children(|parent| {
+                    // Title
+                    parent
+                        .spawn(DebugUiNodeBundle::new(
+                            Some(Style {
+                                width: Val::Percent(100.0),
+                                flex_direction: FlexDirection::Column,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            }),
+                            Some(Color::rgba(0.1, 0.1, 0.1, 0.8)),
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn(DebugUiTitleBundle::new(None));
+                        });
+                    // Bottom panel (for left and right panels)
+                    parent
+                        .spawn(DebugUiNodeBundle::new(None, None))
+                        .with_children(|parent| {
+                            parent
+                                .spawn(DebugUiNodeBundle::new(
+                                    Some(Style {
+                                        width: Val::Percent(100.0),
+                                        height: Val::Percent(100.0),
+                                        flex_direction: FlexDirection::Row,
+                                        ..default()
+                                    }),
+                                    None,
+                                ))
+                                .with_children(|parent| {
+                                    // Top Left Panel
+                                    parent
+                                        .spawn(DebugUiNodeBundle::new(
+                                            Some(Style {
+                                                width: Val::Percent(50.0),
+                                                height: Val::Percent(100.0),
+                                                flex_direction: FlexDirection::Column,
+                                                padding: UiRect::all(Val::Px(10.0)),
+                                                ..default()
+                                            }),
+                                            None, //Some(Color::rgb(0.85, 0.15, 0.15)),
+                                        ))
+                                        .with_children(|parent| {
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "[ Diagnostics ]".to_string(),
+                                                Some(TextStyle {
+                                                    font_size: 30.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                            parent.spawn(DebugUiFpsBundle::new(
+                                                0.0,
+                                                Some(TextStyle {
+                                                    font_size: 24.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                        });
+                                    // Top Right Panel
+                                    parent
+                                        .spawn(DebugUiNodeBundle::new(
+                                            Some(Style {
+                                                width: Val::Percent(50.0),
+                                                height: Val::Percent(100.0),
+                                                flex_direction: FlexDirection::Column,
+                                                align_items: AlignItems::FlexEnd,
+                                                padding: UiRect::all(Val::Px(10.0)),
+                                                ..default()
+                                            }),
+                                            None, //Some(Color::rgb(0.15, 0.15, 0.85)),
+                                        ))
+                                        .with_children(|parent| {
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "[ Environment ]".to_string(),
+                                                Some(TextStyle {
+                                                    font_size: 30.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "GPU...".to_string(),
+                                                Some(TextStyle {
+                                                    font_size: 24.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "CPU...".to_string(),
+                                                Some(TextStyle {
+                                                    font_size: 24.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "RAM...".to_string(),
+                                                Some(TextStyle {
+                                                    font_size: 24.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "Resource Graph...".to_string(),
+                                                Some(TextStyle {
+                                                    font_size: 24.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                        });
+                                });
+                            parent
+                                .spawn(DebugUiNodeBundle::new(
+                                    Some(Style {
+                                        width: Val::Percent(100.0),
+                                        height: Val::Percent(100.0),
+                                        flex_direction: FlexDirection::Row,
+                                        ..default()
+                                    }),
+                                    None,
+                                ))
+                                .with_children(|parent| {
+                                    // Bottom Left Panel
+                                    parent
+                                        .spawn(DebugUiNodeBundle::new(
+                                            Some(Style {
+                                                width: Val::Percent(50.0),
+                                                height: Val::Percent(100.0),
+                                                flex_direction: FlexDirection::ColumnReverse,
+                                                padding: UiRect::all(Val::Px(10.0)),
+                                                ..default()
+                                            }),
+                                            None, //Some(Color::rgb(0.85, 0.85, 0.15)),
+                                        ))
+                                        .with_children(|parent| {
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "[ Player ]".to_string(),
+                                                Some(TextStyle {
+                                                    // font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                                    font_size: 30.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                            parent.spawn(DebugUiDirectionBundle::new(
+                                                Vec2::ZERO,
+                                                None,
+                                            ));
+                                            parent.spawn(DebugUiIsGroundedBundle::new(true, None));
+                                            parent.spawn(DebugUiCharacterPositionBundle::new(
+                                                Vec3::ZERO,
+                                                None,
+                                            ));
+                                            // parent.spawn(DebugUiTextBundle::new(
+                                            //     "Looking At Coord: x=0.0, y=0.0, z=0.0".to_string(),
+                                            //     None,
+                                            // ));
+                                            parent.spawn(DebugUiCharacterLookingAtBundle::new(
+                                                Vec3::ZERO,
+                                                None,
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "Looking At Entity: x=0.0, y=0.0, z=0.0"
+                                                    .to_string(),
+                                                None,
+                                            ));
+                                        });
+                                    // Bottom Right Panel
+                                    parent
+                                        .spawn(DebugUiNodeBundle::new(
+                                            Some(Style {
+                                                width: Val::Percent(50.0),
+                                                height: Val::Percent(100.0),
+                                                flex_direction: FlexDirection::ColumnReverse,
+                                                align_items: AlignItems::FlexEnd,
+                                                padding: UiRect::all(Val::Px(10.0)),
+                                                ..default()
+                                            }),
+                                            None, //Some(Color::rgb(0.15, 0.85, 0.85)),
+                                        ))
+                                        .with_children(|parent| {
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "[ World ]".to_string(),
+                                                Some(TextStyle {
+                                                    // font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                                                    font_size: 30.0,
+                                                    ..default()
+                                                }),
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "Level: -".to_string(),
+                                                None,
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "Puzzle #: -".to_string(),
+                                                None,
+                                            ));
+                                            parent.spawn(DebugUiTextBundle::new(
+                                                "Checkpoints: -".to_string(),
+                                                None,
+                                            ));
+                                        });
+                                });
+                        });
+                });
+        });
 }
 
-    // let square = NodeBundle {
-    //     style: Style {
-    //         width: Val::Px(300.),
-    //         border: UiRect::all(Val::Px(2.)),
-    //         ..default()
-    //     },
-    //     background_color: Color::rgba(0.65, 0.65, 0.65, 0.3).into(),
-    //     ..default()
-    // };
-
-//     let _parent = commands.spawn((container, DebugUI {})).id();
-//     // let child = commands.spawn(square).id();
-
-//     // commands.entity(parent).push_children(&[child]);
-// }
-
-
 fn update_debugger(
-    mut commands: Commands,
-    mut style_query: Query<&mut Style, With<DebugUi>>,
-    mut fps_query: Query<Entity, With<DebugUiFps>>,
+    mut _commands: Commands,
+    mut container_query: Query<&mut Style, With<DebugUiContainer>>,
+    mut fps_query: Query<
+        &mut Text,
+        (
+            With<DebugUiFps>,
+            Without<DebugUiDirection>,
+            Without<DebugUiIsGrounded>,
+            Without<DebugUiCharacterPosition>,
+            Without<DebugUiCharacterLookingAt>,
+        ),
+    >,
+    mut direction_query: Query<
+        &mut Text,
+        (
+            With<DebugUiDirection>,
+            Without<DebugUiFps>,
+            Without<DebugUiIsGrounded>,
+            Without<DebugUiCharacterPosition>,
+            Without<DebugUiCharacterLookingAt>,
+        ),
+    >,
+    mut is_grounded_query: Query<
+        &mut Text,
+        (
+            With<DebugUiIsGrounded>,
+            Without<DebugUiDirection>,
+            Without<DebugUiFps>,
+            Without<DebugUiCharacterPosition>,
+            Without<DebugUiCharacterLookingAt>,
+        ),
+    >,
+    mut position_query: Query<
+        &mut Text,
+        (
+            With<DebugUiCharacterPosition>,
+            Without<DebugUiFps>,
+            Without<DebugUiDirection>,
+            Without<DebugUiIsGrounded>,
+            Without<DebugUiCharacterLookingAt>,
+        ),
+    >,
+    mut looking_at_query: Query<
+        &mut Text,
+        (
+            With<DebugUiCharacterLookingAt>,
+            Without<DebugUiFps>,
+            Without<DebugUiDirection>,
+            Without<DebugUiIsGrounded>,
+            Without<DebugUiCharacterPosition>,
+        ),
+    >,
     debug_data: Res<DebugData>,
     fps: Res<FpsResource<25>>,
 ) {
-    let fps = if fps.average > f32::EPSILON {
-        fps.average
-    } else {
-        0.0
-    };
-
     if debug_data.is_changed() {
-        for mut style in style_query.iter_mut() {
+        for mut style in container_query.iter_mut() {
             if debug_data.is_visible {
-                info!("Debugger is visible.");
                 style.display = Display::DEFAULT;
             } else {
-                info!("Debugger is hidden.");
                 style.display = Display::None;
             }
         }
     }
 
-    let fps_text = format!("FPS: {}", fps);
-    for entity in fps_query.iter_mut() {
-        commands.entity(entity).despawn_recursive();
-        commands.spawn((
-            TextBundle::from_section(
-                fps_text.clone(),
-                TextStyle {
-                    font_size: 16.0,
-                    color: Color::GRAY,
-                    ..default()
-                }
+    // Process FPS counter.
+    // for (parent, _entity) in fps_query.iter_mut() {
+    for mut text in fps_query.iter_mut() {
+        let fps = if fps.average > f32::EPSILON {
+            fps.average
+        } else {
+            0.0
+        };
+        *text = Text::from_section(
+            format!("FPS: {}", fps),
+            TextStyle {
+                font_size: 24.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        );
+    }
+
+    // Process Direction info.
+    for mut text in direction_query.iter_mut() {
+        *text = Text::from_section(
+            format!(
+                "Direction: x={}, z={}",
+                debug_data.direction.x, debug_data.direction.y
             ),
-            DebugUi {},
-            DebugUiFps {},
-        ));
+            TextStyle {
+                font_size: 24.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        );
+    }
+
+    // Process is_grounded.
+    for mut text in is_grounded_query.iter_mut() {
+        *text = Text::from_section(
+            format!("Is Grounded?: {}", debug_data.is_grounded),
+            TextStyle {
+                font_size: 24.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        );
+    }
+
+    // Process character position.
+    for mut text in position_query.iter_mut() {
+        *text = Text::from_section(
+            format!(
+                "Coordinates: x={}, y={}, z={}",
+                debug_data.character_position.x,
+                debug_data.character_position.y,
+                debug_data.character_position.z,
+            ),
+            TextStyle {
+                font_size: 24.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        );
+    }
+
+    // Process character looking at.
+    for mut text in looking_at_query.iter_mut() {
+        *text = Text::from_section(
+            format!(
+                "Looking At Coord: x={}, y={}, z={}",
+                debug_data.character_looking_at.x,
+                debug_data.character_looking_at.y,
+                debug_data.character_looking_at.z,
+            ),
+            TextStyle {
+                font_size: 24.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        );
     }
 }
 
-// fn spawn_box(mut commands: Commands) {
-//     let container = NodeBundle {
-//         style: Style {
-//             width: Val::Percent(100.0),
-//             height: Val::Percent(100.0),
-//             justify_content: JustifyContent::Center,
-//             ..default()
-//         },
-//         ..default()
-//     };
-
-//     let square = NodeBundle {
-//         style: Style {
-//             width: Val::Px(200.),
-//             border: UiRect::all(Val::Px(2.)),
-//             ..default()
-//         },
-//         background_color: Color::rgb(0.65, 0.65, 0.65).into(),
-//         ..default()
-//     };
-
-//     let parent = commands.spawn((container, DebugUI {})).id();
-//     let child = commands.spawn(square).id();
-
-//     commands.entity(parent).push_children(&[child]);
-// }
-
-// fn spawn_text(mut commands: Commands) {
-//     let text = "Hello world!";
-
-//     commands.spawn((
-//         TextBundle::from_section(
-//             text,
-//             TextStyle {
-//                 font_size: 100.0,
-//                 color: Color::WHITE,
-//                 ..default()
-//             },
-//         ) // Set the alignment of the Text
-//         .with_text_justify(JustifyText::Center)
-//         // Set the style of the TextBundle itself.
-//         .with_style(Style {
-//             position_type: PositionType::Absolute,
-//             bottom: Val::Px(5.0),
-//             right: Val::Px(5.0),
-//             ..default()
-//         }),
-//         DebugUI {}
-//     ));
-// }
+fn despawn_debugger(
+    mut commands: Commands,
+    mut container_query: Query<Entity, With<DebugUiContainer>>,
+) {
+    commands
+        .entity(container_query.single_mut())
+        .despawn_recursive();
+}
