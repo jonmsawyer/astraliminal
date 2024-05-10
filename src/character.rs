@@ -364,7 +364,7 @@ fn movement(
                         linear_velocity.x += back.x * movement_acceleration.0 * delta_time;
                         linear_velocity.z += back.z * movement_acceleration.0 * delta_time;
                     }
-                    debug_data.direction = Vec2::new(direction.x, direction.y);
+                    debug_data.direction = direction;
                     // linear_velocity.x += direction.x * movement_acceleration.0 * delta_time;
                     // linear_velocity.z += direction.y * movement_acceleration.0 * delta_time;
                     pan_orbit_camera.focus = transform.translation;
