@@ -3,9 +3,19 @@ mod cursor;
 mod debugger;
 
 use bevy::{
+    // pbr::{MaterialPipeline, MaterialPipelineKey},
+    // reflect::TypePath,
     core::FrameCount,
     prelude::*,
     window::{Cursor, CursorGrabMode, Window, WindowMode, WindowPlugin, WindowResolution},
+    // render::{
+    //     mesh::{MeshVertexBufferLayout, PrimitiveTopology},
+    //     render_asset::RenderAssetUsages,
+    //     render_resource::{
+    //         AsBindGroup, PolygonMode, RenderPipelineDescriptor, ShaderRef,
+    //         SpecializedMeshPipelineError,
+    //     },
+    // },
 };
 
 use bevy_xpbd_3d::{math::*, prelude::*};
@@ -24,9 +34,9 @@ fn main() {
                     grab_mode: CursorGrabMode::Locked,
                     ..Default::default()
                 },
-                title: "Astraliminal".to_string(),
+                title: "Astraliminal".into(),
                 name: Some("astraliminal.app".into()),
-                resolution: WindowResolution::new(1024., 768.).with_scale_factor_override(1.0),
+                resolution: WindowResolution::new(1024.0, 768.0).with_scale_factor_override(1.0),
                 mode: WindowMode::BorderlessFullscreen,
                 resizable: false,
                 focused: true,
@@ -57,6 +67,7 @@ fn setup(
 ) {
     // Player
     let hitbox = PlayerHitbox::default();
+
     commands.spawn((
         // PbrBundle {
         //     mesh: meshes.add(Capsule3d::new(hitbox.radius, hitbox.length)),
@@ -88,7 +99,7 @@ fn setup(
         Collider::cuboid(1.0, 1.0, 1.0),
         PbrBundle {
             mesh: meshes.add(Cuboid::default()),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.6)),
+            material: materials.add(Color::rgb(0.8, 0.1, 0.2)),
             transform: Transform::from_xyz(3.0, 2.0, 3.0),
             ..default()
         },
@@ -98,7 +109,8 @@ fn setup(
     commands.spawn((
         SceneBundle {
             scene: assets.load("models/character_controller_demo.glb#Scene0"),
-            transform: Transform::from_rotation(Quat::from_rotation_y(-std::f32::consts::PI * 0.5)),
+            // transform: Transform::from_rotation(Quat::from_rotation_y(-std::f32::consts::PI * 0.5)),
+            // transform: Transform::from_rotation(Quat::from_rotation_y(0.0)),
             ..default()
         },
         AsyncSceneCollider::new(Some(ComputedCollider::ConvexHull)),

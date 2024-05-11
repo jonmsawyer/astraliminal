@@ -1,14 +1,20 @@
 use bevy::{
-    input::{
-        keyboard::*,
-        // mouse::{MouseScrollUnit, MouseWheel},
-        ButtonState,
-    },
+    input::keyboard::KeyboardInput,
+    input::ButtonState,
+    pbr::{MaterialPipeline, MaterialPipelineKey},
+    // core::FrameCount,
     prelude::*,
+    reflect::TypePath,
+    // window::{Cursor, CursorGrabMode, Window, WindowMode, WindowPlugin, WindowResolution},
+    render::{
+        mesh::{MeshVertexBufferLayout, PrimitiveTopology},
+        render_asset::RenderAssetUsages,
+        render_resource::{
+            AsBindGroup, PolygonMode, RenderPipelineDescriptor, ShaderRef,
+            SpecializedMeshPipelineError,
+        },
+    },
 };
-// use bevy::{ecs::query::Has, app::AppExit, prelude::*};
-// use bevy::window::{Window, WindowMode, WindowLevel};
-// use bevy_xpbd_3d::{math::*, prelude::*};
 
 mod fps;
 use fps::{DebuggerFpsPlugin, FpsResource};
@@ -23,7 +29,7 @@ use ui_bundles::{
 mod ui_components;
 use ui_components::{
     DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer, DebugUiDirection,
-    DebugUiFps, DebugUiIsGrounded,
+    DebugUiFps, DebugUiIsGrounded, DebugUiAxes,
 };
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, States)]
@@ -49,11 +55,97 @@ pub struct DebugData {
     pub is_visible: bool,
 }
 
+pub const AXIS_LENGTH: f32 = 1000.0;
+pub const AXIS_THICKNESS: f32 = 0.5;
+pub const AXIS_SPECULAR_TRANSMISSION: f32 = 1.0;
+
+#[derive(Asset, TypePath, Default, AsBindGroup, Debug, Clone)]
+pub struct LineMaterial {
+    #[uniform(0)]
+    pub base_color: Color,
+    #[uniform(0)]
+    pub color: Color,
+    pub thickness: f32,
+    pub specular_transmission: f32,
+}
+
+impl Material for LineMaterial {
+    fn fragment_shader() -> ShaderRef {
+        "shaders/line_material.wgsl".into()
+    }
+
+    fn specialize(
+        _pipeline: &MaterialPipeline<Self>,
+        descriptor: &mut RenderPipelineDescriptor,
+        _layout: &MeshVertexBufferLayout,
+        _key: MaterialPipelineKey<Self>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        // This is the important part to tell bevy to render this material as a line between vertices
+        descriptor.primitive.polygon_mode = PolygonMode::Line;
+        Ok(())
+    }
+}
+
+impl From<LineMaterial> for StandardMaterial {
+    fn from(line_material: LineMaterial) -> StandardMaterial {
+        StandardMaterial {
+            base_color: line_material.base_color,
+            emissive: line_material.base_color,
+            thickness: AXIS_THICKNESS,
+            ..default()
+        }
+    }
+}
+
+/// A list of lines with a start and end position
+#[derive(Debug, Clone)]
+pub struct LineList {
+    pub lines: Vec<(Vec3, Vec3)>,
+}
+
+impl From<LineList> for Mesh {
+    fn from(line: LineList) -> Self {
+        let vertices: Vec<_> = line.lines.into_iter().flat_map(|(a, b)| [a, b]).collect();
+
+        Mesh::new(
+            // This tells wgpu that the positions are list of lines
+            // where every pair is a start and end point
+            PrimitiveTopology::LineList,
+            RenderAssetUsages::RENDER_WORLD,
+        )
+        // Add the vertices positions as an attribute
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
+    }
+}
+
+/// A list of points that will have a line drawn between each consecutive points
+#[derive(Debug, Clone)]
+pub struct LineStrip {
+    pub points: Vec<Vec3>,
+}
+
+impl From<LineStrip> for Mesh {
+    fn from(line: LineStrip) -> Self {
+        Mesh::new(
+            // This tells wgpu that the positions are a list of points
+            // where a line will be drawn between each consecutive point
+            PrimitiveTopology::LineStrip,
+            RenderAssetUsages::RENDER_WORLD,
+        )
+        // Add the point positions as an attribute
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, line.points)
+    }
+}
+
 pub struct DebuggerPlugin;
 
 impl Plugin for DebuggerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((DebuggerFpsPlugin,))
+        app
+            .add_plugins((
+                DebuggerFpsPlugin,
+                MaterialPlugin::<LineMaterial>::default(),
+            ))
             .insert_state(DebugState::Disabled)
             .init_resource::<DebugData>()
             .add_event::<KeyboardInput>()
@@ -131,7 +223,72 @@ fn keyboard_input(
 //     }
 // }
 
-fn spawn_debugger(mut commands: Commands) {
+fn spawn_debugger(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    // assets: Res<AssetServer>,
+) {
+    // Display axes.
+    commands.spawn((
+        MaterialMeshBundle {
+            mesh: meshes.add(LineList {
+                lines: vec![(
+                    Vec3::new(0.0, -AXIS_LENGTH, 0.0),
+                    Vec3::new(0.0, AXIS_LENGTH, 0.0),
+                )],
+            }),
+            // transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            material: materials.add(LineMaterial {
+                base_color: Color::BLUE,
+                color: Color::BLUE,
+                thickness: AXIS_THICKNESS,
+                specular_transmission: AXIS_SPECULAR_TRANSMISSION,
+            }),
+            ..default()
+        },
+        DebugUiAxes {},
+    ));
+
+    commands.spawn((
+        MaterialMeshBundle {
+            mesh: meshes.add(LineList {
+                lines: vec![(
+                    Vec3::new(0.0, 0.0, -AXIS_LENGTH),
+                    Vec3::new(0.0, 0.0, AXIS_LENGTH),
+                )],
+            }),
+            // transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            material: materials.add(LineMaterial {
+                base_color: Color::GREEN,
+                color: Color::GREEN,
+                thickness: AXIS_THICKNESS,
+                specular_transmission: AXIS_SPECULAR_TRANSMISSION,
+            }),
+            ..default()
+        },
+        DebugUiAxes {},
+    ));
+    commands.spawn((
+        MaterialMeshBundle {
+            mesh: meshes.add(LineList {
+                lines: vec![(
+                    Vec3::new(-AXIS_LENGTH, 0.0, 0.0),
+                    Vec3::new(AXIS_LENGTH, 0.0, 0.0),
+                )],
+            }),
+            // transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            material: materials.add(LineMaterial {
+                base_color: Color::RED,
+                color: Color::RED,
+                thickness: AXIS_THICKNESS,
+                specular_transmission: AXIS_SPECULAR_TRANSMISSION,
+            }),
+            ..default()
+        },
+        DebugUiAxes {},
+    ));
+
     // Root node
     commands
         .spawn(DebugUiNodeBundle::new(None, None))
@@ -411,7 +568,6 @@ fn update_debugger(
     }
 
     // Process FPS counter.
-    // for (parent, _entity) in fps_query.iter_mut() {
     for mut text in fps_query.iter_mut() {
         let fps = if fps.average > f32::EPSILON {
             fps.average
@@ -430,11 +586,27 @@ fn update_debugger(
 
     // Process Direction info.
     for mut text in direction_query.iter_mut() {
+        let mut direction = "Direction: ".to_string();
+
+        if debug_data.direction.y > 0.0 {
+            direction.push_str("Forward");
+        } else if debug_data.direction.y < 0.0 {
+            direction.push_str("Backward");
+        } else {
+            direction.push_str("-");
+        }
+
+        direction.push_str("/");
+
+        if debug_data.direction.x > 0.0 {
+            direction.push_str("Right");
+        } else if debug_data.direction.x < 0.0 {
+            direction.push_str("Left");
+        } else {
+            direction.push_str("-");
+        }
         *text = Text::from_section(
-            format!(
-                "Direction: x={}, z={}",
-                debug_data.direction.x, debug_data.direction.y
-            ),
+            direction,
             TextStyle {
                 font_size: 24.0,
                 color: Color::WHITE,
@@ -459,7 +631,7 @@ fn update_debugger(
     for mut text in position_query.iter_mut() {
         *text = Text::from_section(
             format!(
-                "Coordinates: x={}, y={}, z={}",
+                "Coordinates:\n  x = {:.6}\n  y = {:.6}\n  z = {:.6}",
                 debug_data.character_position.x,
                 debug_data.character_position.y,
                 debug_data.character_position.z,
@@ -476,7 +648,7 @@ fn update_debugger(
     for mut text in looking_at_query.iter_mut() {
         *text = Text::from_section(
             format!(
-                "Looking At Coord: x={}, y={}, z={}",
+                "Looking At Coord:\n  x = {:.6}\n  y = {:.6}\n  z = {:.6}",
                 debug_data.character_looking_at.x,
                 debug_data.character_looking_at.y,
                 debug_data.character_looking_at.z,
@@ -493,8 +665,14 @@ fn update_debugger(
 fn despawn_debugger(
     mut commands: Commands,
     mut container_query: Query<Entity, With<DebugUiContainer>>,
+    axes_query: Query<Entity, With<DebugUiAxes>>,
 ) {
     commands
         .entity(container_query.single_mut())
         .despawn_recursive();
+    for axis in axes_query.iter() {
+        commands
+            .entity(axis)
+            .despawn_recursive();
+    }
 }

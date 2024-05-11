@@ -395,6 +395,7 @@ fn move_camera(
     mut ev_motion: EventReader<MouseMotion>,
     // mut ev_scroll: EventReader<MouseWheel>,
     mut query: Query<(&mut PanOrbitCamera, &mut Transform, &Projection)>,
+    // mut LinearVelocity,
     input_mouse: ResMut<ButtonInput<MouseButton>>,
 ) {
     // change input mapping for orbit and panning here
@@ -588,3 +589,5 @@ fn reset_player(
         }
     }
 }
+
+

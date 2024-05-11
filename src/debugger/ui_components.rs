@@ -26,3 +26,6 @@ pub struct DebugUiCharacterPosition;
 
 #[derive(Debug, Default, Copy, Clone, Component)]
 pub struct DebugUiCharacterLookingAt;
+
+#[derive(Debug, Default, Copy, Clone, Component)]
+pub struct DebugUiAxes;
