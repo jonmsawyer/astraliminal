@@ -1,6 +1,6 @@
 use super::ui_components::{
     DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer, DebugUiDirection,
-    DebugUiFps, DebugUiIsGrounded, DebugUiNode, DebugUiText, DebugUiTitle,
+    DebugUiFps, DebugUiIsGrounded, DebugUiNode, DebugUiText, DebugUiTitle, DebugUiIsUpsideDown,
 };
 use bevy::prelude::*;
 
@@ -180,6 +180,36 @@ impl DebugUiDirectionBundle {
             // }),
             ui_component: DebugUiNode {},
             ui_direction_component: DebugUiDirection {},
+            label: Label,
+        }
+    }
+}
+
+#[derive(Debug, Default, Bundle)]
+pub struct DebugUiIsUpsideDownBundle {
+    pub node: TextBundle,
+    pub ui_component: DebugUiNode,
+    pub ui_is_upside_down_component: DebugUiIsUpsideDown,
+    pub label: Label,
+}
+
+impl DebugUiIsUpsideDownBundle {
+    pub fn new(upside_down: (bool, Vec2), text_style: Option<TextStyle>) -> Self {
+        let text = format!("Is Upside Down?: {}\nRotation Y: {:?}", upside_down.0, upside_down.1);
+        let text_style = text_style.unwrap_or(TextStyle {
+            font_size: 24.0,
+            color: Color::WHITE,
+            ..default()
+        });
+        Self {
+            node: TextBundle::from_section(text, text_style),
+            // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
+            // .with_style(Style {
+            //     width: Val::Percent(50.0),
+            //     ..default()
+            // }),
+            ui_component: DebugUiNode {},
+            ui_is_upside_down_component: DebugUiIsUpsideDown {},
             label: Label,
         }
     }

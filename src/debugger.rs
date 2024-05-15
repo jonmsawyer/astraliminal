@@ -23,13 +23,13 @@ mod ui_bundles;
 use ui_bundles::{
     DebugUiCharacterLookingAtBundle, DebugUiCharacterPositionBundle, DebugUiContainerBundle,
     DebugUiDirectionBundle, DebugUiFpsBundle, DebugUiIsGroundedBundle, DebugUiNodeBundle,
-    DebugUiTextBundle, DebugUiTitleBundle,
+    DebugUiTextBundle, DebugUiTitleBundle, DebugUiIsUpsideDownBundle,
 };
 
 mod ui_components;
 use ui_components::{
     DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer, DebugUiDirection,
-    DebugUiFps, DebugUiIsGrounded, DebugUiAxes,
+    DebugUiFps, DebugUiIsGrounded, DebugUiAxes, DebugUiIsUpsideDown,
 };
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, States)]
@@ -39,8 +39,24 @@ pub enum DebugState {
     Enabled,
 }
 
-#[derive(Debug, Default, Copy, Clone, Resource)]
-pub struct DebugData {
+#[derive(Debug, Default, Clone, Resource)]
+pub struct DebugData { //<T>
+//where T: Component {
+    /// Data stored in a vector.
+    // pub top_left_panel: Vec<(String, String, T)>,
+    // pub top_right_panel: Vec<(String, String, T)>,
+    // pub bottom_left_panel: Vec<(String, String, T)>,
+    // pub bottom_right_panel: Vec<(String, String, T)>,
+    /// Known data:
+    // let data = vec![
+    //     ("direction", "Direction: {}", DebugUiDirection {}),
+    //     ("is_grounded", "Is Grounded? {}", DebugUiIsGrounded {}),
+    //     ("character_position", "Character Position: x={}, y={}, z={}", DebugUiCharacterPosition {}),
+    //     ("character_looking_at", "Character Looking At: x={}, y={}, z={}", DebugUiCharacterLookingAt {}),
+    //     ("reset_player", None, DebugUiResetPlayer {}),
+    //     ("is_upside_down", "Is Upside Down? {}", DebugUiIsUpsideDown {}),
+    //     ("is_visible")
+    // ];
     /// A Vec2 containing the player's controller/keyboard direction.
     pub direction: Vec2,
     /// A boolean representing if the character/player is grounded or not.
@@ -51,6 +67,8 @@ pub struct DebugData {
     pub character_looking_at: Vec3,
     /// Reset the player to their starting position.
     pub reset_player: bool,
+    /// Is the player trying to look upside down?
+    pub is_upside_down: (bool, Vec2),
     /// True if debugger should be shown, false if debugger should be hidden.
     pub is_visible: bool,
 }
@@ -441,6 +459,10 @@ fn spawn_debugger(
                                                 Vec2::ZERO,
                                                 None,
                                             ));
+                                            parent.spawn(DebugUiIsUpsideDownBundle::new(
+                                                (false, Vec2::ZERO),
+                                                None,
+                                            ));
                                             parent.spawn(DebugUiIsGroundedBundle::new(true, None));
                                             parent.spawn(DebugUiCharacterPositionBundle::new(
                                                 Vec3::ZERO,
@@ -552,6 +574,18 @@ fn update_debugger(
             Without<DebugUiDirection>,
             Without<DebugUiIsGrounded>,
             Without<DebugUiCharacterPosition>,
+            Without<DebugUiIsUpsideDown>,
+        ),
+    >,
+    mut is_upside_down_query: Query<
+        &mut Text,
+        (
+            With<DebugUiIsUpsideDown>,
+            Without<DebugUiCharacterLookingAt>,
+            Without<DebugUiFps>,
+            Without<DebugUiDirection>,
+            Without<DebugUiIsGrounded>,
+            Without<DebugUiCharacterPosition>,
         ),
     >,
     debug_data: Res<DebugData>,
@@ -586,7 +620,7 @@ fn update_debugger(
 
     // Process Direction info.
     for mut text in direction_query.iter_mut() {
-        let mut direction = "Direction: ".to_string();
+        let mut direction = "WASD Direction: ".to_string();
 
         if debug_data.direction.y > 0.0 {
             direction.push_str("Forward");
@@ -599,9 +633,9 @@ fn update_debugger(
         direction.push_str("/");
 
         if debug_data.direction.x > 0.0 {
-            direction.push_str("Right");
+            direction.push_str("S. Right");
         } else if debug_data.direction.x < 0.0 {
-            direction.push_str("Left");
+            direction.push_str("S. Left");
         } else {
             direction.push_str("-");
         }
@@ -652,6 +686,22 @@ fn update_debugger(
                 debug_data.character_looking_at.x,
                 debug_data.character_looking_at.y,
                 debug_data.character_looking_at.z,
+            ),
+            TextStyle {
+                font_size: 24.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        );
+    }
+
+    // Process is upside down.
+    for mut text in is_upside_down_query.iter_mut() {
+        *text = Text::from_section(
+            format!(
+                "Is Upside Down? {}\nRotation Y: {:?}",
+                debug_data.is_upside_down.0,
+                debug_data.is_upside_down.1,
             ),
             TextStyle {
                 font_size: 24.0,

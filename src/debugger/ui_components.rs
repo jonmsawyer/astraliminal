@@ -19,6 +19,9 @@ pub struct DebugUiFps;
 pub struct DebugUiDirection;
 
 #[derive(Debug, Default, Copy, Clone, Component)]
+pub struct DebugUiIsUpsideDown;
+
+#[derive(Debug, Default, Copy, Clone, Component)]
 pub struct DebugUiIsGrounded;
 
 #[derive(Debug, Default, Copy, Clone, Component)]
