@@ -22,6 +22,3 @@ opt-level = 3
 [profile.release]
 opt-level = 3
 codegen-units = 1
-
-[toolchain]
-channel = "nightly"

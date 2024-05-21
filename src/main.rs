@@ -1,7 +1,3 @@
-mod character;
-mod cursor;
-mod debugger;
-
 use bevy::{
     // render::{
     //     mesh::{MeshVertexBufferLayout, PrimitiveTopology},
@@ -21,8 +17,13 @@ use bevy::{
 
 use bevy_xpbd_3d::{math::*, prelude::*};
 
+mod character;
 use character::*;
+
+mod cursor;
 use cursor::*;
+
+mod debugger;
 use debugger::*;
 
 /// Astraliminal's version.
@@ -58,7 +59,7 @@ fn main() {
         DebuggerPlugin,
         CursorPlugin,
     ))
-    .add_systems(Startup, (setup, /*spawn_music*/))
+    .add_systems(Startup, (setup /*spawn_music*/,))
     .add_systems(Update, make_visible)
     .run();
 }
@@ -116,7 +117,7 @@ fn setup(
         MassPropertiesBundle {
             mass: Mass(1.0),
             ..default()
-        }
+        },
     ));
 
     // // A golf ball to move around

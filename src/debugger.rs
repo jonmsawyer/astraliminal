@@ -32,6 +32,10 @@ use ui_components::{
     DebugUiDirection, DebugUiFps, DebugUiIsGrounded, DebugUiIsUpsideDown,
 };
 
+pub const AXIS_LENGTH: f32 = 1000.0;
+pub const AXIS_THICKNESS: f32 = 0.1;
+pub const AXIS_SPECULAR_TRANSMISSION: f32 = 1.0;
+
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, States)]
 pub enum DebugState {
     #[default]
@@ -39,39 +43,8 @@ pub enum DebugState {
     Enabled,
 }
 
-pub const AXIS_LENGTH: f32 = 1000.0;
-pub const AXIS_THICKNESS: f32 = 0.1;
-pub const AXIS_SPECULAR_TRANSMISSION: f32 = 1.0;
-
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
-pub struct DebugUiTopLeftPanel;
-
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
-pub struct DebugUiTopRightPanel;
-
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
-pub struct DebugUiBottomLeftPanel;
-
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
-pub struct DebugUiBottomRightPanel;
-
 #[derive(Debug, Default, Clone, Resource)]
 pub struct DebugData {
-    // /// Data stored in a vector.
-    // pub top_left_panel: Vec<(String, String)>,
-    // pub top_right_panel: Vec<(String, String)>,
-    // pub bottom_left_panel: Vec<(String, String)>,
-    // pub bottom_right_panel: Vec<(String, String)>,
-    // /// Known data:
-    // // let data = vec![
-    // //     ("direction", "Direction: {}", DebugUiDirection {}),
-    // //     ("is_grounded", "Is Grounded? {}", DebugUiIsGrounded {}),
-    // //     ("character_position", "Character Position: x={}, y={}, z={}", DebugUiCharacterPosition {}),
-    // //     ("character_looking_at", "Character Looking At: x={}, y={}, z={}", DebugUiCharacterLookingAt {}),
-    // //     ("reset_player", None, DebugUiResetPlayer {}),
-    // //     ("is_upside_down", "Is Upside Down? {}", DebugUiIsUpsideDown {}),
-    // //     ("is_visible")
-    // // ];
     /// A Vec2 containing the player's controller/keyboard direction.
     pub direction: Vec2,
     /// A boolean representing if the character/player is grounded or not.
@@ -126,7 +99,7 @@ impl From<LineMaterial> for StandardMaterial {
     }
 }
 
-/// A list of lines with a start and end position
+/// A list of lines with a start and end position.
 #[derive(Debug, Clone)]
 pub struct LineList {
     pub lines: Vec<(Vec3, Vec3)>,
@@ -147,7 +120,7 @@ impl From<LineList> for Mesh {
     }
 }
 
-/// A list of points that will have a line drawn between each consecutive points
+/// A list of points that will have a line drawn between each consecutive points.
 #[derive(Debug, Clone)]
 pub struct LineStrip {
     pub points: Vec<Vec3>,
@@ -163,6 +136,30 @@ impl From<LineStrip> for Mesh {
         )
         // Add the point positions as an attribute
         .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, line.points)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DebugUiTextStyle;
+
+impl DebugUiTextStyle {
+    /// Return a new TextStyle.
+    fn new(font_size: f32, color: Color) -> TextStyle {
+        TextStyle {
+            font_size,
+            color,
+            ..default()
+        }
+    }
+
+    /// Return the default Debugger UI text style.
+    fn default() -> TextStyle {
+        DebugUiTextStyle::new(24.0, Color::WHITE)
+    }
+
+    /// Return the heading Debugger UI text style.
+    fn heading() -> TextStyle {
+        DebugUiTextStyle::new(30.0, Color::WHITE)
     }
 }
 
@@ -200,6 +197,7 @@ impl Plugin for DebuggerPlugin {
     }
 }
 
+/// Process keyboard input for the Debugger UI.
 fn keyboard_input(
     mut input: EventReader<KeyboardInput>,
     mut debug_data: ResMut<DebugData>,
@@ -257,11 +255,11 @@ fn keyboard_input(
 //     }
 // }
 
+/// Spawn the Debugger UI.
 fn spawn_debugger(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    // assets: Res<AssetServer>,
 ) {
     // Display axes.
 
@@ -379,19 +377,10 @@ fn spawn_debugger(
                                         ))
                                         .with_children(|parent| {
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "[ Diagnostics ]".to_string(),
-                                                Some(TextStyle {
-                                                    font_size: 30.0,
-                                                    ..default()
-                                                }),
+                                                "[ Diagnostics ]".into(),
+                                                None,
                                             ));
-                                            parent.spawn(DebugUiFpsBundle::new(
-                                                0.0,
-                                                Some(TextStyle {
-                                                    font_size: 24.0,
-                                                    ..default()
-                                                }),
-                                            ));
+                                            parent.spawn(DebugUiFpsBundle::new(0.0, None));
                                         });
                                     // Top Right Panel
                                     parent
@@ -408,39 +397,24 @@ fn spawn_debugger(
                                         ))
                                         .with_children(|parent| {
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "[ Environment ]".to_string(),
-                                                Some(TextStyle {
-                                                    font_size: 30.0,
-                                                    ..default()
-                                                }),
+                                                "[ Environment ]".into(),
+                                                Some(DebugUiTextStyle::heading()),
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "GPU...".to_string(),
-                                                Some(TextStyle {
-                                                    font_size: 24.0,
-                                                    ..default()
-                                                }),
+                                                "GPU...".into(),
+                                                None,
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "CPU...".to_string(),
-                                                Some(TextStyle {
-                                                    font_size: 24.0,
-                                                    ..default()
-                                                }),
+                                                "CPU...".into(),
+                                                None,
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "RAM...".to_string(),
-                                                Some(TextStyle {
-                                                    font_size: 24.0,
-                                                    ..default()
-                                                }),
+                                                "RAM...".into(),
+                                                None,
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "Resource Graph...".to_string(),
-                                                Some(TextStyle {
-                                                    font_size: 24.0,
-                                                    ..default()
-                                                }),
+                                                "Resource Graph...".into(),
+                                                None,
                                             ));
                                         });
                                 });
@@ -469,12 +443,8 @@ fn spawn_debugger(
                                         ))
                                         .with_children(|parent| {
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "[ Player ]".to_string(),
-                                                Some(TextStyle {
-                                                    // font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                                    font_size: 30.0,
-                                                    ..default()
-                                                }),
+                                                "[ Player ]".into(),
+                                                Some(DebugUiTextStyle::heading()),
                                             ));
                                             parent.spawn(DebugUiDirectionBundle::new(
                                                 Vec2::ZERO,
@@ -490,7 +460,7 @@ fn spawn_debugger(
                                                 None,
                                             ));
                                             // parent.spawn(DebugUiTextBundle::new(
-                                            //     "Looking At Coord: x=0.0, y=0.0, z=0.0".to_string(),
+                                            //     "Looking At Coord: x=0.0, y=0.0, z=0.0".into(),
                                             //     None,
                                             // ));
                                             parent.spawn(DebugUiCharacterLookingAtBundle::new(
@@ -498,8 +468,7 @@ fn spawn_debugger(
                                                 None,
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "Looking At Entity: x=0.0, y=0.0, z=0.0"
-                                                    .to_string(),
+                                                "Looking At Entity: x=0.0, y=0.0, z=0.0".into(),
                                                 None,
                                             ));
                                         });
@@ -514,27 +483,23 @@ fn spawn_debugger(
                                                 padding: UiRect::all(Val::Px(10.0)),
                                                 ..default()
                                             }),
-                                            None, //Some(Color::rgb(0.15, 0.85, 0.85)),
+                                            None,
                                         ))
                                         .with_children(|parent| {
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "[ World ]".to_string(),
-                                                Some(TextStyle {
-                                                    // font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                                    font_size: 30.0,
-                                                    ..default()
-                                                }),
+                                                "[ World ]".into(),
+                                                Some(DebugUiTextStyle::heading()),
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "Level: -".to_string(),
+                                                "Level: -".into(),
                                                 None,
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "Puzzle #: -".to_string(),
+                                                "Puzzle #: -".into(),
                                                 None,
                                             ));
                                             parent.spawn(DebugUiTextBundle::new(
-                                                "Checkpoints: -".to_string(),
+                                                "Checkpoints: -".into(),
                                                 None,
                                             ));
                                         });
@@ -544,6 +509,7 @@ fn spawn_debugger(
         });
 }
 
+/// Display or hide the Debugger UI.
 fn update_debugger_ui(
     mut container_query: Query<&mut Style, With<DebugUiContainer>>,
     debug_data: Res<DebugData>,
@@ -559,11 +525,8 @@ fn update_debugger_ui(
     }
 }
 
-fn update_fps(
-    mut fps_query: Query<&mut Text, With<DebugUiFps>>,
-    fps: Res<FpsResource<25>>,
-) {
-    // Update FPS.
+/// Update the FPS in the Debugger UI.
+fn update_fps(mut fps_query: Query<&mut Text, With<DebugUiFps>>, fps: Res<FpsResource<25>>) {
     for mut text in fps_query.iter_mut() {
         let fps = if fps.average > f32::EPSILON {
             fps.average
@@ -571,22 +534,15 @@ fn update_fps(
             0.0
         };
 
-        *text = Text::from_section(
-            format!("FPS: {}", fps),
-            TextStyle {
-                font_size: 24.0,
-                color: Color::WHITE,
-                ..default()
-            },
-        );
+        *text = Text::from_section(format!("FPS: {}", fps), DebugUiTextStyle::default());
     }
 }
 
+/// Update the player's movement direction in the Debugger UI.
 fn update_direction(
     mut direction_query: Query<&mut Text, With<DebugUiDirection>>,
     debug_data: Res<DebugData>,
 ) {
-    // Update direction.
     for mut text in direction_query.iter_mut() {
         let mut direction = "WASD Direction: ".to_string();
 
@@ -608,39 +564,28 @@ fn update_direction(
             direction.push_str("-");
         }
 
-        *text = Text::from_section(
-            direction,
-            TextStyle {
-                font_size: 24.0,
-                color: Color::WHITE,
-                ..default()
-            },
-        );
+        *text = Text::from_section(direction, DebugUiTextStyle::default());
     }
 }
 
+/// Update the is grounded status in the Debugger UI.
 fn update_is_grounded(
     mut is_grounded_query: Query<&mut Text, With<DebugUiIsGrounded>>,
     debug_data: Res<DebugData>,
 ) {
-    // Process is_grounded.
     for mut text in is_grounded_query.iter_mut() {
         *text = Text::from_section(
             format!("Is Grounded?: {}", debug_data.is_grounded),
-            TextStyle {
-                font_size: 24.0,
-                color: Color::WHITE,
-                ..default()
-            },
+            DebugUiTextStyle::default(),
         );
     }
 }
 
+/// Update the player's character position in the Debugger UI.
 fn update_character_position(
-    mut position_query: Query<&mut Text ,With<DebugUiCharacterPosition>>,
+    mut position_query: Query<&mut Text, With<DebugUiCharacterPosition>>,
     debug_data: Res<DebugData>,
 ) {
-    // Process character position.
     for mut text in position_query.iter_mut() {
         *text = Text::from_section(
             format!(
@@ -649,20 +594,16 @@ fn update_character_position(
                 debug_data.character_position.y,
                 debug_data.character_position.z,
             ),
-            TextStyle {
-                font_size: 24.0,
-                color: Color::WHITE,
-                ..default()
-            },
+            DebugUiTextStyle::default(),
         );
     }
 }
 
+/// Update the player's character looking at in the Debugger UI.
 fn update_character_looking_at(
     mut looking_at_query: Query<&mut Text, With<DebugUiCharacterLookingAt>>,
     debug_data: Res<DebugData>,
 ) {
-    // Process character looking at.
     for mut text in looking_at_query.iter_mut() {
         *text = Text::from_section(
             format!(
@@ -671,35 +612,28 @@ fn update_character_looking_at(
                 debug_data.character_looking_at.y,
                 debug_data.character_looking_at.z,
             ),
-            TextStyle {
-                font_size: 24.0,
-                color: Color::WHITE,
-                ..default()
-            },
+            DebugUiTextStyle::default(),
         );
     }
 }
 
+/// Update the is upside down status in the Debugger UI.
 fn update_is_upside_down(
     mut is_upside_down_query: Query<&mut Text, With<DebugUiIsUpsideDown>>,
     debug_data: Res<DebugData>,
 ) {
-    // Process is upside down.
     for mut text in is_upside_down_query.iter_mut() {
         *text = Text::from_section(
             format!(
                 "Is Upside Down? {}\nRotation Y: {:?}",
                 debug_data.is_upside_down.0, debug_data.is_upside_down.1,
             ),
-            TextStyle {
-                font_size: 24.0,
-                color: Color::WHITE,
-                ..default()
-            },
+            DebugUiTextStyle::default(),
         );
     }
 }
 
+/// Despawn the Debugger UI.
 fn despawn_debugger(
     mut commands: Commands,
     mut container_query: Query<Entity, With<DebugUiContainer>>,

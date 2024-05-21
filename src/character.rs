@@ -14,7 +14,6 @@ use bevy_xpbd_3d::{math::*, prelude::*};
 
 use super::DebugData;
 
-
 pub struct CharacterPlugin;
 
 impl Plugin for CharacterPlugin {
@@ -31,13 +30,7 @@ impl Plugin for CharacterPlugin {
                 )
                     .chain(),
             )
-            .add_systems(
-                Update,
-                (
-                    move_camera,
-                    reset_player,
-                ),
-            );
+            .add_systems(Update, (move_camera, reset_player));
     }
 }
 
@@ -409,7 +402,11 @@ fn move_camera(
             let window = get_primary_window_size(&mut windows);
             let delta_x = {
                 let delta = rotation_move.x / window.x * PI * 2.0;
-                if debug_data.is_upside_down.0 { -delta } else { delta }
+                if debug_data.is_upside_down.0 {
+                    -delta
+                } else {
+                    delta
+                }
             };
             let mut delta_y = rotation_move.y / window.y * PI;
             if debug_data.is_upside_down.0 && rotation_move.y > 0.0 {
@@ -546,10 +543,7 @@ fn get_primary_window_size(windows: &mut Query<&mut Window>) -> Vec2 {
 //     ));
 // }
 
-fn reset_player(
-    mut debug_data: ResMut<DebugData>,
-    mut query: Query<&mut Transform>,
-) {
+fn reset_player(mut debug_data: ResMut<DebugData>, mut query: Query<&mut Transform>) {
     if debug_data.is_changed() {
         if debug_data.reset_player {
             for mut transform in query.iter_mut() {
@@ -561,5 +555,3 @@ fn reset_player(
         }
     }
 }
-
-

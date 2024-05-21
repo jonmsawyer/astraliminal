@@ -12,7 +12,7 @@ impl Plugin for CursorPlugin {
 }
 
 #[derive(Debug, Copy, Clone, Component)]
-pub struct GameCursor {}
+pub struct GameCursor;
 
 fn setup_cursor(
     mut windows: Query<&mut Window>,

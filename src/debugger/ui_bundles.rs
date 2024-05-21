@@ -1,8 +1,12 @@
-use super::ui_components::{
-    DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer, DebugUiDirection,
-    DebugUiFps, DebugUiIsGrounded, DebugUiNode, DebugUiText, DebugUiTitle, DebugUiIsUpsideDown,
-};
 use bevy::prelude::*;
+
+use super::{
+    ui_components::{
+        DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer, DebugUiDirection,
+        DebugUiFps, DebugUiIsGrounded, DebugUiIsUpsideDown, DebugUiNode, DebugUiText, DebugUiTitle,
+    },
+    DebugUiTextStyle,
+};
 
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiContainerBundle {
@@ -103,11 +107,7 @@ pub struct DebugUiTextBundle {
 
 impl DebugUiTextBundle {
     pub fn new(text: String, text_style: Option<TextStyle>) -> DebugUiTextBundle {
-        let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 24.0,
-            color: Color::WHITE,
-            ..default()
-        });
+        let text_style = text_style.unwrap_or(DebugUiTextStyle::default());
         Self {
             node: TextBundle::from_section(text, text_style),
             // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
@@ -131,11 +131,7 @@ pub struct DebugUiFpsBundle {
 impl DebugUiFpsBundle {
     pub fn new(fps: f32, text_style: Option<TextStyle>) -> DebugUiFpsBundle {
         let text = format!("FPS: {}", fps);
-        let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 24.0,
-            color: Color::WHITE,
-            ..default()
-        });
+        let text_style = text_style.unwrap_or(DebugUiTextStyle::default());
         Self {
             node: TextBundle::from_section(text, text_style),
             // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
@@ -159,11 +155,7 @@ pub struct DebugUiDirectionBundle {
 impl DebugUiDirectionBundle {
     pub fn new(direction: Vec2, text_style: Option<TextStyle>) -> Self {
         let text = format!("WASD Direction: x={}, z={}", direction.x, direction.y);
-        let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 24.0,
-            color: Color::WHITE,
-            ..default()
-        });
+        let text_style = text_style.unwrap_or(DebugUiTextStyle::default());
         Self {
             node: TextBundle::from_section(text, text_style),
             // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
@@ -186,12 +178,11 @@ pub struct DebugUiIsUpsideDownBundle {
 
 impl DebugUiIsUpsideDownBundle {
     pub fn new(upside_down: (bool, Vec2), text_style: Option<TextStyle>) -> Self {
-        let text = format!("Is Upside Down?: {}\nRotation Y: {:?}", upside_down.0, upside_down.1);
-        let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 24.0,
-            color: Color::WHITE,
-            ..default()
-        });
+        let text = format!(
+            "Is Upside Down?: {}\nRotation Y: {:?}",
+            upside_down.0, upside_down.1
+        );
+        let text_style = text_style.unwrap_or(DebugUiTextStyle::default());
         Self {
             node: TextBundle::from_section(text, text_style),
             // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
@@ -215,11 +206,7 @@ pub struct DebugUiIsGroundedBundle {
 impl DebugUiIsGroundedBundle {
     pub fn new(is_grounded: bool, text_style: Option<TextStyle>) -> Self {
         let text = format!("Is Grounded?: {}", is_grounded);
-        let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 24.0,
-            color: Color::WHITE,
-            ..default()
-        });
+        let text_style = text_style.unwrap_or(DebugUiTextStyle::default());
         Self {
             node: TextBundle::from_section(text, text_style),
             // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
@@ -246,11 +233,7 @@ impl DebugUiCharacterPositionBundle {
             "Position: x={}, y={}, z={}",
             character_position.x, character_position.y, character_position.z,
         );
-        let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 24.0,
-            color: Color::WHITE,
-            ..default()
-        });
+        let text_style = text_style.unwrap_or(DebugUiTextStyle::default());
         Self {
             node: TextBundle::from_section(text, text_style),
             // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
@@ -277,11 +260,7 @@ impl DebugUiCharacterLookingAtBundle {
             "Looking At Coord: x={}, y={}, z={}",
             character_looking_at.x, character_looking_at.y, character_looking_at.z,
         );
-        let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 24.0,
-            color: Color::WHITE,
-            ..default()
-        });
+        let text_style = text_style.unwrap_or(DebugUiTextStyle::default());
         Self {
             node: TextBundle::from_section(text, text_style),
             // .with_background_color(Color::rgba(0.8, 0.1, 0.1, 0.2)),
