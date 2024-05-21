@@ -3,11 +3,6 @@ mod cursor;
 mod debugger;
 
 use bevy::{
-    // pbr::{MaterialPipeline, MaterialPipelineKey},
-    // reflect::TypePath,
-    core::FrameCount,
-    prelude::*,
-    window::{Cursor, CursorGrabMode, Window, WindowMode, WindowPlugin, WindowResolution},
     // render::{
     //     mesh::{MeshVertexBufferLayout, PrimitiveTopology},
     //     render_asset::RenderAssetUsages,
@@ -16,7 +11,12 @@ use bevy::{
     //         SpecializedMeshPipelineError,
     //     },
     // },
-    audio::{PlaybackSettings, PlaybackMode},
+    audio::{PlaybackMode, PlaybackSettings},
+    // pbr::{MaterialPipeline, MaterialPipelineKey},
+    // reflect::TypePath,
+    core::FrameCount,
+    prelude::*,
+    window::{Cursor, CursorGrabMode, Window, WindowMode, WindowPlugin, WindowResolution},
 };
 
 use bevy_xpbd_3d::{math::*, prelude::*};
@@ -25,7 +25,7 @@ use character::*;
 use cursor::*;
 use debugger::*;
 
-/// Chui's version.
+/// Astraliminal's version.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
@@ -36,9 +36,9 @@ fn main() {
                 cursor: Cursor {
                     visible: false,
                     grab_mode: CursorGrabMode::Locked,
-                    ..Default::default()
+                    ..default()
                 },
-                title: format!(r#"Astralimimnal v{}"#, VERSION),
+                title: format!("Astralimimnal v{}", VERSION),
                 name: Some("astraliminal.app".into()),
                 resolution: WindowResolution::new(1024.0, 768.0).with_scale_factor_override(1.0),
                 mode: WindowMode::BorderlessFullscreen,
@@ -49,16 +49,16 @@ fn main() {
                 // This is useful when you want to avoid the white window that shows up before
                 // the GPU is ready to render the app.
                 visible: false,
-                ..Default::default()
+                ..default()
             }),
-            ..Default::default()
+            ..default()
         }),
         PhysicsPlugins::default(),
         CharacterPlugin,
         DebuggerPlugin,
         CursorPlugin,
     ))
-    .add_systems(Startup, (setup, spawn_music))
+    .add_systems(Startup, (setup, /*spawn_music*/))
     .add_systems(Update, make_visible)
     .run();
 }
@@ -80,7 +80,7 @@ fn setup(
         //     ..default()
         // },
         CharacterControllerBundle::new(Collider::capsule(hitbox.length, hitbox.radius))
-            .with_movement(30.0, 0.92, 7.0, (30.0 as Scalar).to_radians()),
+            .with_movement(30.0, 0.92, 4.0, (30.0 as Scalar).to_radians()),
         Friction::ZERO.with_combine_rule(CoefficientCombine::Min),
         Restitution::ZERO.with_combine_rule(CoefficientCombine::Min),
         GravityScale(1.0),
@@ -90,6 +90,10 @@ fn setup(
                 .looking_at(hitbox.looking_at, Vec3::Y),
             ..Default::default()
         },
+        // MassPropertiesBundle {
+        //     mass: Mass(200.0),
+        //     ..default()
+        // },
         // PanOrbitCamera {
         //     focus: hitbox.position,
         //     radius: 0.0,
@@ -104,9 +108,15 @@ fn setup(
         PbrBundle {
             mesh: meshes.add(Cuboid::default()),
             material: materials.add(Color::rgb(0.8, 0.1, 0.2)),
-            transform: Transform::from_xyz(3.0, 2.0, 3.0),
+            transform: Transform::from_xyz(3.0, 10.0, 3.0),
             ..default()
         },
+        // GravityScale(0.1666667),
+        Friction::ZERO.with_combine_rule(CoefficientCombine::Max),
+        MassPropertiesBundle {
+            mass: Mass(1.0),
+            ..default()
+        }
     ));
 
     // // A golf ball to move around
@@ -163,7 +173,7 @@ fn make_visible(mut window: Query<&mut Window>, frames: Res<FrameCount>) {
     }
 }
 
-fn spawn_music(asset_server: Res<AssetServer>, mut commands: Commands) {
+fn _spawn_music(asset_server: Res<AssetServer>, mut commands: Commands) {
     commands.spawn(AudioBundle {
         source: asset_server.load("sound/Patrick De Arteaga/Su Turno.ogg"),
         settings: PlaybackSettings {

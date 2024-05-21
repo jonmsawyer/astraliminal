@@ -22,14 +22,14 @@ use fps::{DebuggerFpsPlugin, FpsResource};
 mod ui_bundles;
 use ui_bundles::{
     DebugUiCharacterLookingAtBundle, DebugUiCharacterPositionBundle, DebugUiContainerBundle,
-    DebugUiDirectionBundle, DebugUiFpsBundle, DebugUiIsGroundedBundle, DebugUiNodeBundle,
-    DebugUiTextBundle, DebugUiTitleBundle, DebugUiIsUpsideDownBundle,
+    DebugUiDirectionBundle, DebugUiFpsBundle, DebugUiIsGroundedBundle, DebugUiIsUpsideDownBundle,
+    DebugUiNodeBundle, DebugUiTextBundle, DebugUiTitleBundle,
 };
 
 mod ui_components;
 use ui_components::{
-    DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer, DebugUiDirection,
-    DebugUiFps, DebugUiIsGrounded, DebugUiAxes, DebugUiIsUpsideDown,
+    DebugUiAxes, DebugUiCharacterLookingAt, DebugUiCharacterPosition, DebugUiContainer,
+    DebugUiDirection, DebugUiFps, DebugUiIsGrounded, DebugUiIsUpsideDown,
 };
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, States)]
@@ -39,24 +39,39 @@ pub enum DebugState {
     Enabled,
 }
 
+pub const AXIS_LENGTH: f32 = 1000.0;
+pub const AXIS_THICKNESS: f32 = 0.1;
+pub const AXIS_SPECULAR_TRANSMISSION: f32 = 1.0;
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
+pub struct DebugUiTopLeftPanel;
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
+pub struct DebugUiTopRightPanel;
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
+pub struct DebugUiBottomLeftPanel;
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Component)]
+pub struct DebugUiBottomRightPanel;
+
 #[derive(Debug, Default, Clone, Resource)]
-pub struct DebugData { //<T>
-//where T: Component {
-    /// Data stored in a vector.
-    // pub top_left_panel: Vec<(String, String, T)>,
-    // pub top_right_panel: Vec<(String, String, T)>,
-    // pub bottom_left_panel: Vec<(String, String, T)>,
-    // pub bottom_right_panel: Vec<(String, String, T)>,
-    /// Known data:
-    // let data = vec![
-    //     ("direction", "Direction: {}", DebugUiDirection {}),
-    //     ("is_grounded", "Is Grounded? {}", DebugUiIsGrounded {}),
-    //     ("character_position", "Character Position: x={}, y={}, z={}", DebugUiCharacterPosition {}),
-    //     ("character_looking_at", "Character Looking At: x={}, y={}, z={}", DebugUiCharacterLookingAt {}),
-    //     ("reset_player", None, DebugUiResetPlayer {}),
-    //     ("is_upside_down", "Is Upside Down? {}", DebugUiIsUpsideDown {}),
-    //     ("is_visible")
-    // ];
+pub struct DebugData {
+    // /// Data stored in a vector.
+    // pub top_left_panel: Vec<(String, String)>,
+    // pub top_right_panel: Vec<(String, String)>,
+    // pub bottom_left_panel: Vec<(String, String)>,
+    // pub bottom_right_panel: Vec<(String, String)>,
+    // /// Known data:
+    // // let data = vec![
+    // //     ("direction", "Direction: {}", DebugUiDirection {}),
+    // //     ("is_grounded", "Is Grounded? {}", DebugUiIsGrounded {}),
+    // //     ("character_position", "Character Position: x={}, y={}, z={}", DebugUiCharacterPosition {}),
+    // //     ("character_looking_at", "Character Looking At: x={}, y={}, z={}", DebugUiCharacterLookingAt {}),
+    // //     ("reset_player", None, DebugUiResetPlayer {}),
+    // //     ("is_upside_down", "Is Upside Down? {}", DebugUiIsUpsideDown {}),
+    // //     ("is_visible")
+    // // ];
     /// A Vec2 containing the player's controller/keyboard direction.
     pub direction: Vec2,
     /// A boolean representing if the character/player is grounded or not.
@@ -65,17 +80,13 @@ pub struct DebugData { //<T>
     pub character_position: Vec3,
     /// A Vec3 containing the vector of looking direction by the player.
     pub character_looking_at: Vec3,
-    /// Reset the player to their starting position.
-    pub reset_player: bool,
     /// Is the player trying to look upside down?
     pub is_upside_down: (bool, Vec2),
+    /// Reset the player to their starting position.
+    pub reset_player: bool,
     /// True if debugger should be shown, false if debugger should be hidden.
     pub is_visible: bool,
 }
-
-pub const AXIS_LENGTH: f32 = 1000.0;
-pub const AXIS_THICKNESS: f32 = 0.5;
-pub const AXIS_SPECULAR_TRANSMISSION: f32 = 1.0;
 
 #[derive(Asset, TypePath, Default, AsBindGroup, Debug, Clone)]
 pub struct LineMaterial {
@@ -159,11 +170,7 @@ pub struct DebuggerPlugin;
 
 impl Plugin for DebuggerPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_plugins((
-                DebuggerFpsPlugin,
-                MaterialPlugin::<LineMaterial>::default(),
-            ))
+        app.add_plugins((DebuggerFpsPlugin, MaterialPlugin::<LineMaterial>::default()))
             .insert_state(DebugState::Disabled)
             .init_resource::<DebugData>()
             .add_event::<KeyboardInput>()
@@ -179,7 +186,16 @@ impl Plugin for DebuggerPlugin {
             )
             .add_systems(
                 PreUpdate,
-                (update_debugger,).run_if(in_state(DebugState::Enabled)),
+                (
+                    update_debugger_ui,
+                    update_fps,
+                    update_direction,
+                    update_is_grounded,
+                    update_character_position,
+                    update_character_looking_at,
+                    update_is_upside_down,
+                )
+                    .run_if(in_state(DebugState::Enabled)),
             );
     }
 }
@@ -248,6 +264,8 @@ fn spawn_debugger(
     // assets: Res<AssetServer>,
 ) {
     // Display axes.
+
+    // Y-axis
     commands.spawn((
         MaterialMeshBundle {
             mesh: meshes.add(LineList {
@@ -265,9 +283,10 @@ fn spawn_debugger(
             }),
             ..default()
         },
-        DebugUiAxes {},
+        DebugUiAxes,
     ));
 
+    // Z-axis
     commands.spawn((
         MaterialMeshBundle {
             mesh: meshes.add(LineList {
@@ -285,8 +304,10 @@ fn spawn_debugger(
             }),
             ..default()
         },
-        DebugUiAxes {},
+        DebugUiAxes,
     ));
+
+    // X-axis
     commands.spawn((
         MaterialMeshBundle {
             mesh: meshes.add(LineList {
@@ -304,7 +325,7 @@ fn spawn_debugger(
             }),
             ..default()
         },
-        DebugUiAxes {},
+        DebugUiAxes,
     ));
 
     // Root node
@@ -523,73 +544,9 @@ fn spawn_debugger(
         });
 }
 
-fn update_debugger(
-    mut _commands: Commands,
+fn update_debugger_ui(
     mut container_query: Query<&mut Style, With<DebugUiContainer>>,
-    mut fps_query: Query<
-        &mut Text,
-        (
-            With<DebugUiFps>,
-            Without<DebugUiDirection>,
-            Without<DebugUiIsGrounded>,
-            Without<DebugUiCharacterPosition>,
-            Without<DebugUiCharacterLookingAt>,
-        ),
-    >,
-    mut direction_query: Query<
-        &mut Text,
-        (
-            With<DebugUiDirection>,
-            Without<DebugUiFps>,
-            Without<DebugUiIsGrounded>,
-            Without<DebugUiCharacterPosition>,
-            Without<DebugUiCharacterLookingAt>,
-        ),
-    >,
-    mut is_grounded_query: Query<
-        &mut Text,
-        (
-            With<DebugUiIsGrounded>,
-            Without<DebugUiDirection>,
-            Without<DebugUiFps>,
-            Without<DebugUiCharacterPosition>,
-            Without<DebugUiCharacterLookingAt>,
-        ),
-    >,
-    mut position_query: Query<
-        &mut Text,
-        (
-            With<DebugUiCharacterPosition>,
-            Without<DebugUiFps>,
-            Without<DebugUiDirection>,
-            Without<DebugUiIsGrounded>,
-            Without<DebugUiCharacterLookingAt>,
-        ),
-    >,
-    mut looking_at_query: Query<
-        &mut Text,
-        (
-            With<DebugUiCharacterLookingAt>,
-            Without<DebugUiFps>,
-            Without<DebugUiDirection>,
-            Without<DebugUiIsGrounded>,
-            Without<DebugUiCharacterPosition>,
-            Without<DebugUiIsUpsideDown>,
-        ),
-    >,
-    mut is_upside_down_query: Query<
-        &mut Text,
-        (
-            With<DebugUiIsUpsideDown>,
-            Without<DebugUiCharacterLookingAt>,
-            Without<DebugUiFps>,
-            Without<DebugUiDirection>,
-            Without<DebugUiIsGrounded>,
-            Without<DebugUiCharacterPosition>,
-        ),
-    >,
     debug_data: Res<DebugData>,
-    fps: Res<FpsResource<25>>,
 ) {
     if debug_data.is_changed() {
         for mut style in container_query.iter_mut() {
@@ -600,14 +557,20 @@ fn update_debugger(
             }
         }
     }
+}
 
-    // Process FPS counter.
+fn update_fps(
+    mut fps_query: Query<&mut Text, With<DebugUiFps>>,
+    fps: Res<FpsResource<25>>,
+) {
+    // Update FPS.
     for mut text in fps_query.iter_mut() {
         let fps = if fps.average > f32::EPSILON {
             fps.average
         } else {
             0.0
         };
+
         *text = Text::from_section(
             format!("FPS: {}", fps),
             TextStyle {
@@ -617,8 +580,13 @@ fn update_debugger(
             },
         );
     }
+}
 
-    // Process Direction info.
+fn update_direction(
+    mut direction_query: Query<&mut Text, With<DebugUiDirection>>,
+    debug_data: Res<DebugData>,
+) {
+    // Update direction.
     for mut text in direction_query.iter_mut() {
         let mut direction = "WASD Direction: ".to_string();
 
@@ -639,6 +607,7 @@ fn update_debugger(
         } else {
             direction.push_str("-");
         }
+
         *text = Text::from_section(
             direction,
             TextStyle {
@@ -648,7 +617,12 @@ fn update_debugger(
             },
         );
     }
+}
 
+fn update_is_grounded(
+    mut is_grounded_query: Query<&mut Text, With<DebugUiIsGrounded>>,
+    debug_data: Res<DebugData>,
+) {
     // Process is_grounded.
     for mut text in is_grounded_query.iter_mut() {
         *text = Text::from_section(
@@ -660,7 +634,12 @@ fn update_debugger(
             },
         );
     }
+}
 
+fn update_character_position(
+    mut position_query: Query<&mut Text ,With<DebugUiCharacterPosition>>,
+    debug_data: Res<DebugData>,
+) {
     // Process character position.
     for mut text in position_query.iter_mut() {
         *text = Text::from_section(
@@ -677,7 +656,12 @@ fn update_debugger(
             },
         );
     }
+}
 
+fn update_character_looking_at(
+    mut looking_at_query: Query<&mut Text, With<DebugUiCharacterLookingAt>>,
+    debug_data: Res<DebugData>,
+) {
     // Process character looking at.
     for mut text in looking_at_query.iter_mut() {
         *text = Text::from_section(
@@ -694,14 +678,18 @@ fn update_debugger(
             },
         );
     }
+}
 
+fn update_is_upside_down(
+    mut is_upside_down_query: Query<&mut Text, With<DebugUiIsUpsideDown>>,
+    debug_data: Res<DebugData>,
+) {
     // Process is upside down.
     for mut text in is_upside_down_query.iter_mut() {
         *text = Text::from_section(
             format!(
                 "Is Upside Down? {}\nRotation Y: {:?}",
-                debug_data.is_upside_down.0,
-                debug_data.is_upside_down.1,
+                debug_data.is_upside_down.0, debug_data.is_upside_down.1,
             ),
             TextStyle {
                 font_size: 24.0,
@@ -721,8 +709,6 @@ fn despawn_debugger(
         .entity(container_query.single_mut())
         .despawn_recursive();
     for axis in axes_query.iter() {
-        commands
-            .entity(axis)
-            .despawn_recursive();
+        commands.entity(axis).despawn_recursive();
     }
 }

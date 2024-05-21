@@ -6,15 +6,14 @@
 //! - Support for both keyboard and gamepad input
 //! - A configurable maximum slope angle for jumping
 //! - Loading a platformer environment from a glTF
-//!
-//! The character controller logic is contained within the `plugin` module.
-//!
-//! For a kinematic character controller, see the `kinematic_character_3d` example.
+
+use std::f32::consts::PI;
 
 use bevy::{app::AppExit, ecs::query::Has, input::mouse::*, prelude::*};
 use bevy_xpbd_3d::{math::*, prelude::*};
 
 use super::DebugData;
+
 
 pub struct CharacterPlugin;
 
@@ -32,16 +31,13 @@ impl Plugin for CharacterPlugin {
                 )
                     .chain(),
             )
-            // .add_systems(Startup, spawn_camera)
             .add_systems(
                 Update,
                 (
                     move_camera,
-                    // pan_orbit_camera,
                     reset_player,
                 ),
             );
-        // .add_systems(Update, move_cursor);
     }
 }
 
@@ -389,79 +385,47 @@ fn apply_movement_damping(mut query: Query<(&MovementDampingFactor, &mut LinearV
     }
 }
 
-/// Update camera based on where the capsule is.
+/// Update camera based on where the player is at.
 fn move_camera(
-    mut windows: Query<&mut Window>,
-    mut ev_motion: EventReader<MouseMotion>,
-    // mut ev_scroll: EventReader<MouseWheel>,
-    mut query: Query<(&mut Transform, &Projection)>,
-    // mut LinearVelocity,
-    // input_mouse: ResMut<ButtonInput<MouseButton>>,
     mut debug_data: ResMut<DebugData>,
+    mut mouse_motion_event: EventReader<MouseMotion>,
+    mut windows: Query<&mut Window>,
+    mut transform_query: Query<&mut Transform, With<Projection>>,
 ) {
-    // change input mapping for orbit and panning here
-    // let orbit_button = MouseButton::Right;
-
     let mut rotation_move = Vec2::ZERO;
-    let mut _scroll: f32 = 0.0;
-    // let mut orbit_button_changed = false;
 
-    // if input_mouse.pressed(orbit_button) {
-    for ev in ev_motion.read() {
-        rotation_move += ev.delta;
+    for mme in mouse_motion_event.read() {
+        rotation_move += mme.delta;
     }
-    // }
-    // if input_mouse.just_released(orbit_button) || input_mouse.just_pressed(orbit_button) {
-    //     orbit_button_changed = true;
-    // }
 
-    for (/*mut pan_orbit,*/ mut transform, _projection) in query.iter_mut() {
-        // only check for upside down when orbiting started or ended this frame
-        // if the camera is "upside" down, panning horizontally would be inverted, so invert the input to make it correct
+    for mut transform in transform_query.iter_mut() {
+        // Only check for upside down when orbiting started or ended this frame
+        // if the camera is "upside" down, panning horizontally would be inverted,
+        // so invert the input to make it correct.
         let up = transform.rotation * Vec3::Y;
-        debug_data.is_upside_down = (
-            up.y <= 0.0,
-            rotation_move,
-        );
+        debug_data.is_upside_down = (up.y <= 0.0, rotation_move);
 
-        // let mut any = false;
         if rotation_move.length_squared() > 0.0 {
-            // any = true;
             let window = get_primary_window_size(&mut windows);
             let delta_x = {
-                let delta = -rotation_move.x / window.x * std::f32::consts::PI * 2.0;
-                if debug_data.is_upside_down.0 {
-                    -delta
-                } else {
-                    delta
-                }
+                let delta = rotation_move.x / window.x * PI * 2.0;
+                if debug_data.is_upside_down.0 { -delta } else { delta }
             };
-            let mut delta_y = -rotation_move.y / window.y * std::f32::consts::PI;
+            let mut delta_y = rotation_move.y / window.y * PI;
             if debug_data.is_upside_down.0 && rotation_move.y > 0.0 {
                 delta_y = 0.0;
             }
-            if debug_data.is_upside_down.0 && rotation_move.y >= 0.0 {
-                delta_y = 0.0;
-            }
-            let yaw = Quat::from_axis_angle(Vec3::Y, delta_x);
-            let pitch = Quat::from_axis_angle(Vec3::X, delta_y);
-            transform.rotation = yaw * transform.rotation; // rotate around global y axis
-            transform.rotation = transform.rotation * pitch; // rotate around local x axis
+            // Negate delta for proper rotation.
+            let yaw = Quat::from_axis_angle(Vec3::Y, -delta_x);
+            let pitch = Quat::from_axis_angle(Vec3::X, -delta_y);
+            transform.rotation = yaw * transform.rotation; // Rotate around global y-axis.
+            transform.rotation = transform.rotation * pitch; // Rotate around local x-axis.
         }
-
-        // if any {
-        //     // emulating parent/child to make the yaw/y-axis rotation behave like a turntable
-        //     // parent = x and y rotation
-        //     // child = z-offset
-        //     let rot_matrix = Mat3::from_quat(transform.rotation);
-        //     transform.translation =
-        //         pan_orbit.focus + rot_matrix.mul_vec3(Vec3::new(0.0, 0.0, pan_orbit.radius));
-        // }
     }
 
-    // consume any remaining events, so they don't pile up if we don't need them
-    // (and also to avoid Bevy warning us about not checking events every frame update)
-    ev_motion.clear();
+    // Consume any remaining events, so they don't pile up if we don't need them
+    // (and also to avoid Bevy warning us about not checking events every frame update).
+    mouse_motion_event.clear();
 }
 
 // /// Pan the camera with middle mouse click, zoom with scroll wheel, orbit with right mouse click.

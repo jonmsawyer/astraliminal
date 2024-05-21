@@ -30,7 +30,7 @@ impl DebugUiContainerBundle {
                 z_index: ZIndex::Global(30),
                 ..default()
             },
-            ui_component: DebugUiContainer {},
+            ui_component: DebugUiContainer,
         }
     }
 }
@@ -61,7 +61,7 @@ impl DebugUiNodeBundle {
                 z_index: ZIndex::Global(30),
                 ..default()
             },
-            ui_component: DebugUiNode {},
+            ui_component: DebugUiNode,
         }
     }
 }
@@ -69,8 +69,7 @@ impl DebugUiNodeBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiTitleBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_title_component: DebugUiTitle,
+    pub ui_component: DebugUiTitle,
     pub label: Label,
 }
 
@@ -89,8 +88,7 @@ impl DebugUiTitleBundle {
                     margin: UiRect::all(Val::Px(10.0)),
                     ..default()
                 }),
-            ui_component: DebugUiNode {},
-            ui_title_component: DebugUiTitle {},
+            ui_component: DebugUiTitle,
             label: Label,
         }
     }
@@ -99,8 +97,7 @@ impl DebugUiTitleBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiTextBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_text_component: DebugUiText,
+    pub ui_component: DebugUiText,
     pub label: Label,
 }
 
@@ -118,8 +115,7 @@ impl DebugUiTextBundle {
             //     width: Val::Percent(50.0),
             //     ..default()
             // }),
-            ui_component: DebugUiNode {},
-            ui_text_component: DebugUiText {},
+            ui_component: DebugUiText,
             label: Label,
         }
     }
@@ -128,8 +124,7 @@ impl DebugUiTextBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiFpsBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_fps_component: DebugUiFps,
+    pub ui_component: DebugUiFps,
     pub label: Label,
 }
 
@@ -148,8 +143,7 @@ impl DebugUiFpsBundle {
             //     width: Val::Percent(50.0),
             //     ..default()
             // }),
-            ui_component: DebugUiNode {},
-            ui_fps_component: DebugUiFps {},
+            ui_component: DebugUiFps,
             label: Label,
         }
     }
@@ -158,8 +152,7 @@ impl DebugUiFpsBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiDirectionBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_direction_component: DebugUiDirection,
+    pub ui_component: DebugUiDirection,
     pub label: Label,
 }
 
@@ -178,8 +171,7 @@ impl DebugUiDirectionBundle {
             //     width: Val::Percent(50.0),
             //     ..default()
             // }),
-            ui_component: DebugUiNode {},
-            ui_direction_component: DebugUiDirection {},
+            ui_component: DebugUiDirection,
             label: Label,
         }
     }
@@ -188,8 +180,7 @@ impl DebugUiDirectionBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiIsUpsideDownBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_is_upside_down_component: DebugUiIsUpsideDown,
+    pub ui_component: DebugUiIsUpsideDown,
     pub label: Label,
 }
 
@@ -208,8 +199,7 @@ impl DebugUiIsUpsideDownBundle {
             //     width: Val::Percent(50.0),
             //     ..default()
             // }),
-            ui_component: DebugUiNode {},
-            ui_is_upside_down_component: DebugUiIsUpsideDown {},
+            ui_component: DebugUiIsUpsideDown,
             label: Label,
         }
     }
@@ -218,8 +208,7 @@ impl DebugUiIsUpsideDownBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiIsGroundedBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_is_grounded_component: DebugUiIsGrounded,
+    pub ui_component: DebugUiIsGrounded,
     pub label: Label,
 }
 
@@ -238,8 +227,7 @@ impl DebugUiIsGroundedBundle {
             //     width: Val::Percent(50.0),
             //     ..default()
             // }),
-            ui_component: DebugUiNode {},
-            ui_is_grounded_component: DebugUiIsGrounded {},
+            ui_component: DebugUiIsGrounded,
             label: Label,
         }
     }
@@ -248,8 +236,7 @@ impl DebugUiIsGroundedBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiCharacterPositionBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_character_position_component: DebugUiCharacterPosition,
+    pub ui_component: DebugUiCharacterPosition,
     pub label: Label,
 }
 
@@ -271,8 +258,7 @@ impl DebugUiCharacterPositionBundle {
             //     width: Val::Percent(50.0),
             //     ..default()
             // }),
-            ui_component: DebugUiNode {},
-            ui_character_position_component: DebugUiCharacterPosition {},
+            ui_component: DebugUiCharacterPosition,
             label: Label,
         }
     }
@@ -281,8 +267,7 @@ impl DebugUiCharacterPositionBundle {
 #[derive(Debug, Default, Bundle)]
 pub struct DebugUiCharacterLookingAtBundle {
     pub node: TextBundle,
-    pub ui_component: DebugUiNode,
-    pub ui_character_looking_at_component: DebugUiCharacterLookingAt,
+    pub ui_component: DebugUiCharacterLookingAt,
     pub label: Label,
 }
 
@@ -304,8 +289,7 @@ impl DebugUiCharacterLookingAtBundle {
             //     width: Val::Percent(50.0),
             //     ..default()
             // }),
-            ui_component: DebugUiNode {},
-            ui_character_looking_at_component: DebugUiCharacterLookingAt {},
+            ui_component: DebugUiCharacterLookingAt,
             label: Label,
         }
     }
