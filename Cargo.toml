@@ -3,13 +3,20 @@ name = "astraliminal"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-bevy = { version = "0.13", features = ["dynamic_linking"] }
-bevy_flycam = "0.13"
-# rapier3d = { version = "0.19", features = [ "simd-stable" ] }
-bevy_xpbd_3d = { git = "https://github.com/Jondolf/bevy_xpbd", branch = "main" }
+astral_core.workspace = true
+# astral_ui.workspace = true
+# astral_macros.workspace = true
+
+[workspace]
+members = ["lib/*", "bin/*"]
+resolver = "2"
+default-members = ["bin/astral_game"]
+
+[workspace.dependencies]
+astral_core = { path = "lib/astral_core" }
+# astral_ui = { path = "lib/astral_ui" }
+# astral_macros = { path = "lib/astral_macros" }
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

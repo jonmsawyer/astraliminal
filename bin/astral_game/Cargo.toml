@@ -1,0 +1,13 @@
+[package]
+name = "astral_game"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { version = "0.13", features = ["dynamic_linking"] }
+bevy_flycam = "0.13"
+# rapier3d = { version = "0.19", features = [ "simd-stable" ] }
+bevy_xpbd_3d = { git = "https://github.com/Jondolf/bevy_xpbd", branch = "main" }
+astral_core.workspace = true
+# astral_ui.workspace = true
+# astral_macros.workspace = true
