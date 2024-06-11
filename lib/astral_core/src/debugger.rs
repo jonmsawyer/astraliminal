@@ -31,6 +31,8 @@ pub const AXIS_LENGTH: f32 = 1000.0;
 pub const AXIS_THICKNESS: f32 = 0.1;
 pub const AXIS_SPECULAR_TRANSMISSION: f32 = 1.0;
 
+pub const UI_SCALE: f32 = 2.0;
+
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, States)]
 pub enum DebugState {
     #[default]
@@ -149,12 +151,12 @@ impl DebugUiTextStyle {
 
     /// Return the default Debugger UI text style.
     fn default() -> TextStyle {
-        DebugUiTextStyle::new(24.0, Color::WHITE)
+        DebugUiTextStyle::new(24.0 * UI_SCALE, Color::WHITE)
     }
 
     /// Return the heading Debugger UI text style.
     fn heading() -> TextStyle {
-        DebugUiTextStyle::new(30.0, Color::WHITE)
+        DebugUiTextStyle::new(30.0 * UI_SCALE, Color::WHITE)
     }
 }
 

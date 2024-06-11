@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::UI_SCALE;
+
 use super::{ui_components::*, DebugUiTextStyle};
 
 #[derive(Debug, Default, Bundle)]
@@ -75,7 +77,7 @@ impl DebugUiTitleBundle {
     pub fn new(text_style: Option<TextStyle>) -> DebugUiTitleBundle {
         let text = "Astraliminal Debugger and Statistics";
         let text_style = text_style.unwrap_or(TextStyle {
-            font_size: 32.0,
+            font_size: 32.0 * UI_SCALE,
             color: Color::GRAY,
             ..default()
         });

@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use crate::UI_SCALE;
+
 #[derive(Debug, Copy, Clone, Component)]
 pub struct GameCursor;
 
@@ -24,8 +26,8 @@ fn setup_cursor(
     let cursor_spawn: Vec3 = Vec3::ZERO;
     let center_x = window.width() / 2.0;
     let center_y = window.height() / 2.0;
-    let cursor_width: f32 = 32.0; // in pixels
-    let cursor_height: f32 = 32.0; // in pixels
+    let cursor_width: f32 = 32.0 * UI_SCALE; // in pixels
+    let cursor_height: f32 = 32.0 * UI_SCALE; // in pixels
 
     commands.spawn((
         ImageBundle {

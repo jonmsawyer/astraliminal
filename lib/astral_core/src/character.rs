@@ -21,6 +21,7 @@ impl Plugin for CharacterPlugin {
                     update_grounded,
                     movement,
                     apply_movement_damping,
+                    // syc_character_and_camera,
                 )
                     .chain(),
             )
@@ -80,6 +81,7 @@ impl CharacterHitbox {
         Transform::from_translation(self.position).looking_at(self.looking_at, Vec3::Y)
     }
 }
+
 /// An event sent for a movement input action.
 #[derive(Debug, Event)]
 pub enum MovementAction {
@@ -176,6 +178,11 @@ impl CharacterControllerBundle {
         max_slope_angle: Scalar,
     ) -> Self {
         self.movement = MovementBundle::new(acceleration, damping, jump_impulse, max_slope_angle);
+        self
+    }
+
+    pub fn with_locked_axes(mut self, locked_axes: LockedAxes) -> Self {
+        self.locked_axes = locked_axes;
         self
     }
 }
@@ -640,4 +647,13 @@ fn reset_player(
             debug_data.reset_player = false;
         }
     }
+}
+
+fn _syc_character_and_camera(
+    mut character_query: Query<&mut Transform, (With<GlobalTransform>, Without<Projection>)>,
+    camera_query: Query<&Transform, (With<Projection>, Without<GlobalTransform>)>,
+) {
+    let mut character_transform = character_query.single_mut();
+    let camera_transform = camera_query.single();
+    *character_transform = camera_transform.clone();
 }
