@@ -57,6 +57,8 @@ fn make_visible(mut window: Query<&mut Window>, frames: Res<FrameCount>) {
     }
 }
 
+// TODO: make this system only available when the main game is running. Refactor this later
+//       when there are menus and app context in place.
 fn keyboard_input(
     key_code: Res<ButtonInput<KeyCode>>,
     mut app_exit_events: ResMut<Events<AppExit>>,
