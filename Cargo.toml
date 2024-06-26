@@ -15,7 +15,6 @@ default-members = ["bin/astral_game"]
 
 [workspace.dependencies]
 astral_core = { path = "lib/astral_core" }
-# astral_ui = { path = "lib/astral_ui" }
 # astral_macros = { path = "lib/astral_macros" }
 
 # Enable a small amount of optimization in debug mode
