@@ -3,6 +3,7 @@
 use chrono::Local;
 
 use bevy::{
+    app::AppExit,
     core::FrameCount,
     prelude::*,
     window::{Cursor, CursorGrabMode, Window, WindowMode, WindowPlugin, WindowResolution},
@@ -42,7 +43,7 @@ impl Plugin for AstraliminalWindowPlugin {
             }),
             ..default()
         }))
-        .add_systems(Update, make_visible);
+        .add_systems(Update, (make_visible, keyboard_input));
     }
 }
 
@@ -53,5 +54,15 @@ fn make_visible(mut window: Query<&mut Window>, frames: Res<FrameCount>) {
         // Alternatively, you could toggle the visibility in Startup.
         // It will work, but it will have one white frame before it starts rendering
         window.single_mut().visible = true;
+    }
+}
+
+fn keyboard_input(
+    key_code: Res<ButtonInput<KeyCode>>,
+    mut app_exit_events: ResMut<Events<AppExit>>,
+) {
+    // TODO: pull key code from config.
+    if key_code.any_pressed([KeyCode::Escape]) {
+        app_exit_events.send(AppExit);
     }
 }
