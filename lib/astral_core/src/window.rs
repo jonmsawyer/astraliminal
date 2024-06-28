@@ -22,29 +22,34 @@ pub struct AstraliminalWindowPlugin;
 
 impl Plugin for AstraliminalWindowPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                cursor: Cursor {
+        app.add_plugins(
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    cursor: Cursor {
+                        visible: false,
+                        grab_mode: CursorGrabMode::None,
+                        ..default()
+                    },
+                    title: format!(
+                        "Astralimimnal v{}{}",
+                        ASTRAL_VERSION, ASTRAL_COMPILE_DATETIME
+                    ),
+                    name: Some("astraliminal.app".into()),
+                    resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT)
+                        .with_scale_factor_override(WINDOW_SCALE_FACTOR),
+                    mode: WindowMode::Windowed,
+                    resizable: false,
+                    focused: true,
+                    // This will spawn an invisible window.
+                    // The window will be made visible in the `make_visible` system after 5 frames.
+                    // This is useful when you want to avoid the white window that shows up before
+                    // the GPU is ready to render the app.
                     visible: false,
-                    grab_mode: CursorGrabMode::None,
                     ..default()
-                },
-                title: format!("Astralimimnal v{}{}", ASTRAL_VERSION, ASTRAL_COMPILE_DATETIME),
-                name: Some("astraliminal.app".into()),
-                resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT)
-                    .with_scale_factor_override(WINDOW_SCALE_FACTOR),
-                mode: WindowMode::Windowed,
-                resizable: false,
-                focused: true,
-                // This will spawn an invisible window.
-                // The window will be made visible in the `make_visible` system after 5 frames.
-                // This is useful when you want to avoid the white window that shows up before
-                // the GPU is ready to render the app.
-                visible: false,
+                }),
                 ..default()
             }),
-            ..default()
-        }))
+        )
         .add_systems(Update, (make_visible, keyboard_input));
     }
 }
