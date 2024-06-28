@@ -1,7 +1,5 @@
 //! Astraliminal's Window plugin.
 
-use chrono::Local;
-
 use bevy::{
     app::AppExit,
     core::FrameCount,
@@ -10,7 +8,15 @@ use bevy::{
 };
 
 /// Astraliminal's version.
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+const ASTRAL_VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Astraliminal's compile datetime. See `../build.rs`.
+const ASTRAL_COMPILE_DATETIME: &str = env!("ASTRAL_COMPILE_DATETIME");
+/// Default window height
+const WINDOW_HEIGHT: f32 = 768.0;
+/// Default window width
+const WINDOW_WIDTH: f32 = 1024.0;
+/// Default window scale factor.
+const WINDOW_SCALE_FACTOR: f32 = 1.0;
 
 pub struct AstraliminalWindowPlugin;
 
@@ -23,19 +29,15 @@ impl Plugin for AstraliminalWindowPlugin {
                     grab_mode: CursorGrabMode::None,
                     ..default()
                 },
-                // TODO: format time at compile time.
-                title: format!(
-                    "Astralimimnal v{} on {}",
-                    VERSION,
-                    Local::now().format("%Y-%m-%d at %H:%M:%S")
-                ),
+                title: format!("Astralimimnal v{}{}", ASTRAL_VERSION, ASTRAL_COMPILE_DATETIME),
                 name: Some("astraliminal.app".into()),
-                resolution: WindowResolution::new(1024.0, 768.0).with_scale_factor_override(1.0),
+                resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT)
+                    .with_scale_factor_override(WINDOW_SCALE_FACTOR),
                 mode: WindowMode::Windowed,
                 resizable: false,
                 focused: true,
-                // This will spawn an invisible window
-                // The window will be made visible in the make_visible() system after 5 frames.
+                // This will spawn an invisible window.
+                // The window will be made visible in the `make_visible` system after 5 frames.
                 // This is useful when you want to avoid the white window that shows up before
                 // the GPU is ready to render the app.
                 visible: false,
@@ -47,18 +49,22 @@ impl Plugin for AstraliminalWindowPlugin {
     }
 }
 
+/// Make the window visible. Depends on the frame count when starting up. This is to get
+/// rid of the annoying white window at startup.
 fn make_visible(mut window: Query<&mut Window>, frames: Res<FrameCount>) {
     // The delay may be different for your app or system.
     if frames.0 == 5 {
         // At this point the gpu is ready to show the app so we can make the window visible.
         // Alternatively, you could toggle the visibility in Startup.
-        // It will work, but it will have one white frame before it starts rendering
+        // It will work, but it will have one white frame before it starts rendering.
         window.single_mut().visible = true;
     }
 }
 
-// TODO: make this system only available when the main game is running. Refactor this later
-//       when there are menus and app context in place.
+// TODO: Make the `keyboard_input` system only available when the main game is running.
+//       Refactor this later when there are menus and app context in place.
+
+/// Process keyboard input for the main window.
 fn keyboard_input(
     key_code: Res<ButtonInput<KeyCode>>,
     mut app_exit_events: ResMut<Events<AppExit>>,

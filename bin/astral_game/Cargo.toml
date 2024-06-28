@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 astral_core.workspace = true
 bevy = { version = "0.13", features = ["dynamic_linking"] }
+chrono = { version = "0.4" }

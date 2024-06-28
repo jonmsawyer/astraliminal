@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 astral_core.workspace = true
-# astral_ui.workspace = true
 # astral_macros.workspace = true
 
 [workspace]

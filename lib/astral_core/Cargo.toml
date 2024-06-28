@@ -2,6 +2,7 @@
 name = "astral_core"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 bevy = { version = "0.13", features = ["dynamic_linking"] }
@@ -9,4 +10,7 @@ bevy_flycam = "0.13"
 bevy-inspector-egui = "0.24"
 bevy_xpbd_3d = { git = "https://github.com/Jondolf/bevy_xpbd", branch = "main" }
 # rapier3d = { version = "0.19", features = [ "simd-stable" ] }
+chrono = { version = "0.4" }
+
+[build-dependencies]
 chrono = { version = "0.4" }
